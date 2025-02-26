@@ -33,11 +33,13 @@
     <string name="dialog_battery_low_title">Låg batterinivå</string>
     <string name="reboot">Starta om</string>
     <string name="menu_refresh">Uppdatera</string>
+    <string name="menu_preferences">Egenskaper</string>
     <string name="menu_auto_updates_check">Sök efter uppdateringar automatiskt</string>
     <string name="menu_auto_updates_check_interval_daily">En gång om dagen</string>
     <string name="menu_auto_updates_check_interval_weekly">En gång i veckan</string>
     <string name="menu_auto_updates_check_interval_monthly">En gång i månaden</string>
     <string name="menu_auto_updates_check_interval_never">Aldrig</string>
+    <string name="menu_auto_delete_updates">Ta bort uppdateringar efter installation</string>
     <string name="menu_delete_update">Ta bort</string>
     <string name="menu_copy_url">Kopiera webbadress</string>
     <string name="menu_show_changelog">Visa ändringslogg</string>
@@ -63,6 +65,7 @@
     <string name="confirm_delete_dialog_title">Ta bort fil</string>
     <string name="apply_update_dialog_message">Du är på väg att uppdatera <xliff:g id="update_name">%1$s</xliff:g>.\n\nOm du trycker på <xliff:g id="ok">%2$s</xliff:g> så kommer enheten att starta om sig själv till återställningsläget för att installera uppdateringen.\n\nNotera: Den här funktionen kräver ett kompatibelt återställningsläge. Finns inte detta kommer du behöva installera uppdateringarna manuellt.</string>
     <string name="apply_update_dialog_message_ab">Du är på väg att uppdatera <xliff:g id="update_name">%1$s</xliff:g>.\n\nOm du trycker på <xliff:g id="ok">%2$s</xliff:g> så kommer enheten att påbörja installationen i bakgrunden.\n\nNär den är slutförd kommer du bli ombedd att starta om.</string>
+    <string name="cancel_installation_dialog_message">Vill du avbryta installationen?</string>
     <string name="label_download_url">Nedladdningsadress</string>
     <string name="toast_download_url_copied">Webbadressen har kopierats</string>
     <string name="notification_export_success">Uppdatering exporterad</string>
@@ -87,6 +90,7 @@
     <string name="export_channel_title">Export slutförd</string>
     <string name="new_updates_channel_title">Nya uppdateringar</string>
     <string name="ongoing_channel_title">Pågående nedladdningar</string>
+    <string name="update_failed_channel_title">Uppdateringen misslyckades</string>
     <string name="info_dialog_title">Visste du att?</string>
     <string name="info_dialog_message">LineageOS-uppdateringar är kompletta installationspaket, vilket innebär att du alltid kan installera den senaste uppdateringen, även om du hoppade över några däremellan!</string>
     <string name="info_dialog_ok">Tack för infon!</string>

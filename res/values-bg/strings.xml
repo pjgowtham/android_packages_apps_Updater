@@ -67,6 +67,8 @@
     <string name="header_last_updates_check">Последна проверка: <xliff:g id="date" example="1 January 1970">%1$s</xliff:g> (<xliff:g id="time" example="01:23">%2$s</xliff:g>)</string>
     <string name="list_build_version">LineageOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
     <string name="list_build_version_date">LineageOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+    <string name="list_download_progress_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> от <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g></string>
+    <string name="list_download_progress_eta_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> от <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g> (<xliff:g id="eta" example="3 minutes left">%3$s</xliff:g>)</string>
     <string name="list_verifying_update">Проверка на актуализацията</string>
     <string name="list_no_updates">Не са намерени нови актуализации. За да проверите ръчно за нови актуализации, използвайте бутона за обновяване.</string>
     <string name="action_download">Изтегли</string>
@@ -79,6 +81,8 @@
     <string name="confirm_delete_dialog_title">Изтриване на файл</string>
     <string name="confirm_delete_dialog_message">Да бъде ли изтрит файлът на избраната актуализация?</string>
     <string name="apply_update_dialog_title">Приложи актуализацията</string>
+    <string name="apply_update_dialog_message">На път сте да актуализирате до <xliff:g id="update_name">%1$s</xliff:g>.\n\nАко натиснете <xliff:g id="ok">%2$s</xliff:g>, устройството ще се рестартира в режим зареждане на системата, за да се актуализира.\n\nЗабележка: Последният трябва да бъде съвместим или актулизациите ще трябва да се инсталират ръчно.</string>
+    <string name="apply_update_dialog_message_ab">На път сте да актуализирате до версия <xliff:g id="update_name">%1$s</xliff:g>.\n\nАко натиснете <xliff:g id="ok">%2$s</xliff:g>, устройството ще започне инсталацията на заден фон.\n\nКогато е готово ще бъдете поканени да рестартирате.</string>
     <string name="cancel_installation_dialog_message">Анулиране на инсталирането?</string>
     <string name="label_download_url">Изтеглете URL</string>
     <string name="toast_download_url_copied">URL Копиран</string>
@@ -86,6 +90,7 @@
     <string name="notification_export_success">Актуализацията е експортирана</string>
     <string name="notification_export_fail">Грешка при експортиране</string>
     <string name="toast_already_exporting">Вече изнася актуализация</string>
+    <string name="toast_export_started">Експортирането запона</string>
     <plurals name="eta_seconds">
         <item quantity="one">остава 1 секунда</item>
         <item quantity="other">остават <xliff:g id="count">%d</xliff:g> секунди</item>
@@ -108,4 +113,7 @@
     <string name="new_updates_channel_title">Нови актуализации</string>
     <string name="ongoing_channel_title">Текущи изтегляния</string>
     <string name="update_failed_channel_title">Актуализацията прекратена</string>
+    <string name="info_dialog_title">Знаете ли, че?</string>
+    <string name="info_dialog_message">Актуализациите на LineageOS са пълни инсталационни пакети. Това означава, че винаги може да бъде инсталирана последната актуализация, дори ако други преди нея бъдат пропуснати!</string>
+    <string name="info_dialog_ok">Благодаря ви за информацията!</string>
 </resources>

@@ -47,7 +47,7 @@
     <string name="menu_auto_updates_check_interval_weekly">Raz w tygodniu</string>
     <string name="menu_auto_updates_check_interval_monthly">Raz w miesiącu</string>
     <string name="menu_auto_updates_check_interval_never">Nigdy</string>
-    <string name="menu_auto_delete_updates">Usuń pliki aktualizacji po zainstalowaniu</string>
+    <string name="menu_auto_delete_updates">Usuwaj pliki aktualizacji po zainstalowaniu</string>
     <string name="menu_delete_update">Usuń</string>
     <string name="menu_copy_url">Kopiuj adres URL</string>
     <string name="menu_export_update">Wyślij aktualizację</string>
@@ -74,7 +74,7 @@
     <string name="action_download">Pobierz</string>
     <string name="action_pause">Wstrzymaj</string>
     <string name="action_resume">Wznów</string>
-    <string name="action_install">Instaluj</string>
+    <string name="action_install">Zainstaluj</string>
     <string name="action_info">Informacje</string>
     <string name="action_delete">Usuń</string>
     <string name="action_cancel">Anuluj</string>

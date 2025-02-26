@@ -42,17 +42,19 @@
     <string name="reboot">Reiniciar</string>
     <string name="menu_refresh">Atualizar</string>
     <string name="menu_preferences">Preferências</string>
-    <string name="menu_auto_updates_check">Autoverificar por atualizações</string>
+    <string name="menu_auto_updates_check">Automaticamente buscar atualizações</string>
     <string name="menu_auto_updates_check_interval_daily">Diariamente</string>
     <string name="menu_auto_updates_check_interval_weekly">Semanalmente</string>
     <string name="menu_auto_updates_check_interval_monthly">Mensalmente</string>
     <string name="menu_auto_updates_check_interval_never">Nunca</string>
-    <string name="menu_auto_delete_updates">Excluir pacotes instalados</string>
+    <string name="menu_auto_delete_updates">Excluir pacotes já instalados</string>
     <string name="menu_delete_update">Excluir</string>
     <string name="menu_copy_url">Copiar URL</string>
     <string name="menu_export_update">Exportar atualização</string>
     <string name="menu_show_changelog">Mostrar alterações</string>
     <string name="menu_ab_perf_mode">Priorizar o processo de atualização</string>
+    <string name="menu_update_recovery">Atualizar recovery</string>
+    <string name="toast_forced_update_recovery">Não é possível desativar as atualizações do Lineage Recovery neste dispositivo.</string>
     <string name="snack_updates_found">Nova atualização disponível</string>
     <string name="snack_no_updates_found">Não foram encontradas novas atualizações</string>
     <string name="snack_updates_check_failed">Falha ao procurar por atualizações. Verifique sua conexão com a internet e tente novamente.</string>
@@ -65,6 +67,8 @@
     <string name="header_last_updates_check">Última verificação: <xliff:g id="date" example="1 January 1970">%1$s</xliff:g> às <xliff:g id="time" example="01:23">%2$s</xliff:g></string>
     <string name="list_build_version">LineageOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
     <string name="list_build_version_date">LineageOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+    <string name="list_download_progress_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> de <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g></string>
+    <string name="list_download_progress_eta_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> de <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g> (<xliff:g id="eta" example="3 minutes left">%3$s</xliff:g>)</string>
     <string name="list_verifying_update">Verificando atualização</string>
     <string name="list_no_updates">Não foram encontradas novas atualizações. Use o botão Atualizar para buscar por novas atualizações manualmente.</string>
     <string name="action_download">Baixar</string>
@@ -77,6 +81,8 @@
     <string name="confirm_delete_dialog_title">Excluir arquivo</string>
     <string name="confirm_delete_dialog_message">Excluir o arquivo de atualização selecionado?</string>
     <string name="apply_update_dialog_title">Instalar atualização</string>
+    <string name="apply_update_dialog_message">Você está prestes a instalar <xliff:g id="update_name">%1$s</xliff:g>.\n\nAo clicar em <xliff:g id="ok">%2$s</xliff:g>, o dispositivo reiniciará no modo recovery para instalar a atualização.\n\nÉ necessário ter uma Recovery compatível, caso contrário as atualizações deverão ser instaladas manualmente.</string>
+    <string name="apply_update_dialog_message_ab">Você está prestes a instalar <xliff:g id="update_name">%1$s</xliff:g>.\n\nAo clicar em <xliff:g id="ok">%2$s</xliff:g>, o dispositivo iniciará a instalação em segundo plano.\n\nAo concluir, você será solicitado a reiniciar o dispositivo.</string>
     <string name="cancel_installation_dialog_message">Deseja cancelar a instalação?</string>
     <string name="label_download_url">URL de Download</string>
     <string name="toast_download_url_copied">URL copiado</string>
@@ -84,6 +90,7 @@
     <string name="notification_export_success">Atualização exportada</string>
     <string name="notification_export_fail">Falha ao exportar</string>
     <string name="toast_already_exporting">Uma atualização já está sendo exportada</string>
+    <string name="toast_export_started">Exportação iniciada</string>
     <plurals name="eta_seconds">
         <item quantity="one">1 segundo restante</item>
         <item quantity="other"><xliff:g id="count">%d</xliff:g> segundos restantes</item>
@@ -107,5 +114,6 @@
     <string name="ongoing_channel_title">Downloads em andamento</string>
     <string name="update_failed_channel_title">Falha ao atualizar</string>
     <string name="info_dialog_title">Você sabia?</string>
+    <string name="info_dialog_message">As atualizações do LineageOS são pacotes completos de instalação. Isso significa que você pode instalar a versão mais recente mesmo que tenha ignorado versões anteriores.</string>
     <string name="info_dialog_ok">Agradecemos o seu comentário!</string>
 </resources>
