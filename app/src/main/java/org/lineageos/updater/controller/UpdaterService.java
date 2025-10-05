@@ -38,16 +38,19 @@ import androidx.preference.PreferenceManager;
 import org.lineageos.updater.R;
 import org.lineageos.updater.UpdaterReceiver;
 import org.lineageos.updater.UpdatesActivity;
+import org.lineageos.updater.misc.BuildInfoUtils;
 import org.lineageos.updater.misc.Constants;
 import org.lineageos.updater.misc.StringGenerator;
 import org.lineageos.updater.misc.Utils;
 import org.lineageos.updater.model.Update;
 import org.lineageos.updater.model.UpdateInfo;
+import org.lineageos.updater.controller.UpdaterService;
 import org.lineageos.updater.model.UpdateStatus;
 
 import java.io.IOException;
 import java.text.DateFormat;
 import java.text.NumberFormat;
+import java.util.List;
 
 public class UpdaterService extends Service {
 
@@ -61,6 +64,8 @@ public class UpdaterService extends Service {
 
     public static final String ACTION_INSTALL_SUSPEND = "action_install_suspend";
     public static final String ACTION_INSTALL_RESUME = "action_install_resume";
+
+    public static final String ACTION_POST_REBOOT_CLEANUP = "action_post_reboot_cleanup";
 
     private static final String ONGOING_NOTIFICATION_CHANNEL =
             "ongoing_notification_channel";
@@ -192,6 +197,9 @@ public class UpdaterService extends Service {
                         mUpdaterController);
                 installer.reconnect();
             }
+        } else if (ACTION_POST_REBOOT_CLEANUP.equals(intent.getAction())) {
+            handlePostRebootCleanup();
+            tryStopSelf();
         } else if (ACTION_DOWNLOAD_CONTROL.equals(intent.getAction())) {
             String downloadId = intent.getStringExtra(EXTRA_DOWNLOAD_ID);
             int action = intent.getIntExtra(EXTRA_DOWNLOAD_CONTROL, -1);
@@ -424,14 +432,6 @@ public class UpdaterService extends Service {
 
                 mNotificationManager.notify(POST_INSTALL_NOTIFICATION_ID, rebootNotificationBuilder.build());
 
-                SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(this);
-                boolean deleteUpdate = pref.getBoolean(Constants.PREF_AUTO_DELETE_UPDATES, false);
-                boolean isLocal = Update.LOCAL_ID.equals(update.getDownloadId());
-                // Always delete local updates
-                if (deleteUpdate || isLocal) {
-                    mUpdaterController.deleteUpdate(update.getDownloadId());
-                }
-
                 tryStopSelf();
                 break;
             }
@@ -553,5 +553,26 @@ public class UpdaterService extends Service {
         intent.setAction(ACTION_INSTALL_RESUME);
         return PendingIntent.getService(this, 0, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    private void handlePostRebootCleanup() {
+        SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(this);
+        boolean autoDelete = pref.getBoolean(Constants.PREF_AUTO_DELETE_UPDATES, false);
+
+        // Get the timestamp of the currently running build.
+        long currentBuildTimestamp = BuildInfoUtils.getBuildDateTimestamp();
+        List<UpdateInfo> updates = mUpdaterController.getUpdates();
+
+        for (UpdateInfo update : updates) {
+            boolean isLocal = Update.LOCAL_ID.equals(update.getDownloadId());
+            // Check if the update is marked as installed AND its timestamp is older than the current build.
+            if (update.getPersistentStatus() == UpdateStatus.Persistent.VERIFIED &&
+                     update.getTimestamp() < currentBuildTimestamp) {
+                // Delete if auto-delete is on, or if it was a local update (which is always deleted).
+                if (autoDelete || isLocal) {
+                    mUpdaterController.deleteUpdate(update.getDownloadId());
+                }
+            }
+        }
     }
 }
