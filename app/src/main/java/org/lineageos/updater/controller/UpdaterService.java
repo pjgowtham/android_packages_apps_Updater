@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2025 The LineageOS Project
+ * Copyright (C) 2017-2026 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,6 +61,8 @@ public class UpdaterService extends Service {
 
     public static final String ACTION_INSTALL_SUSPEND = "action_install_suspend";
     public static final String ACTION_INSTALL_RESUME = "action_install_resume";
+
+    public static final String ACTION_POST_REBOOT_CLEANUP = "action_post_reboot_cleanup";
 
     private static final String ONGOING_NOTIFICATION_CHANNEL =
             "ongoing_notification_channel";
@@ -181,6 +183,10 @@ public class UpdaterService extends Service {
                         mUpdaterController);
                 installer.reconnect();
             }
+        } else if (ACTION_POST_REBOOT_CLEANUP.equals(intent.getAction())) {
+            String downloadId = intent.getStringExtra(EXTRA_DOWNLOAD_ID);
+            handlePostRebootCleanup(downloadId);
+            tryStopSelf();
         } else if (ACTION_DOWNLOAD_CONTROL.equals(intent.getAction())) {
             String downloadId = intent.getStringExtra(EXTRA_DOWNLOAD_ID);
             int action = intent.getIntExtra(EXTRA_DOWNLOAD_CONTROL, -1);
@@ -194,6 +200,10 @@ public class UpdaterService extends Service {
         } else if (ACTION_INSTALL_UPDATE.equals(intent.getAction())) {
             String downloadId = intent.getStringExtra(EXTRA_DOWNLOAD_ID);
             UpdateInfo update = mUpdaterController.getUpdate(downloadId);
+            if (update == null) {
+                Log.e(TAG, "Update not found: " + downloadId);
+                return START_NOT_STICKY;
+            }
             if (update.getPersistentStatus() != UpdateStatus.Persistent.VERIFIED) {
                 throw new IllegalArgumentException(update.getDownloadId() + " is not verified");
             }
@@ -411,14 +421,6 @@ public class UpdaterService extends Service {
                 mNotificationBuilder.setAutoCancel(true);
                 mNotificationManager.notify(NOTIFICATION_ID, mNotificationBuilder.build());
 
-                SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(this);
-                boolean deleteUpdate = pref.getBoolean(Constants.PREF_AUTO_DELETE_UPDATES, false);
-                boolean isLocal = Update.LOCAL_ID.equals(update.getDownloadId());
-                // Always delete local updates
-                if (deleteUpdate || isLocal) {
-                    mUpdaterController.deleteUpdate(update.getDownloadId());
-                }
-
                 tryStopSelf();
                 break;
             }
@@ -540,5 +542,18 @@ public class UpdaterService extends Service {
         intent.setAction(ACTION_INSTALL_RESUME);
         return PendingIntent.getService(this, 0, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    private void handlePostRebootCleanup(String downloadId) {
+        if (downloadId == null) {
+            return;
+        }
+        SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(this);
+        boolean deleteUpdate = pref.getBoolean(Constants.PREF_AUTO_DELETE_UPDATES, false);
+        // Always delete local updates
+        boolean isLocal = Update.LOCAL_ID.equals(downloadId);
+        if (deleteUpdate || isLocal) {
+            mUpdaterController.deleteUpdate(downloadId);
+        }
     }
 }
