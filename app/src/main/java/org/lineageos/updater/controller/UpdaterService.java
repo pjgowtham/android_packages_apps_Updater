@@ -417,7 +417,7 @@ public class UpdaterService extends Service {
                         .setContentTitle(text)
                         .setContentText(getString(R.string.reboot_to_complete_update))
                         .addAction(R.drawable.ic_system_update,
-                                getString(R.string.reboot),
+                                getString(R.string.reboot_now),
                                 getRebootPendingIntent())
                         .setOngoing(true)
                         .setAutoCancel(false);

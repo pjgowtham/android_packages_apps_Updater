@@ -419,12 +419,21 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
             }
             break;
             case REBOOT: {
-                button.setText(R.string.reboot);
                 button.setEnabled(enabled);
-                clickListener = enabled ? view -> {
-                    PowerManager pm = mActivity.getSystemService(PowerManager.class);
-                    pm.reboot(null);
-                } : null;
+
+                SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mActivity);
+                long scheduledTime = prefs.getLong(Constants.PREF_SCHEDULED_REBOOT_TIME, -1);
+
+                if (scheduledTime > 0) {
+                    button.setText(mActivity.getString(R.string.reboot_scheduled_at,
+                            StringGenerator.getTimeLocalized(mActivity, scheduledTime / 1000)));
+                } else {
+                    button.setText(R.string.reboot);
+                }
+
+                clickListener = enabled ? view ->
+                        ((UpdatesActivity) mActivity).promptForReboot(downloadId)
+                        : null;
             }
             break;
             default:

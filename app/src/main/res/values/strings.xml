@@ -72,6 +72,17 @@
     <string name="dialog_scratch_mounted_title">Cannot install update with OverlayFS mounted</string>
 
     <string name="reboot">Reboot</string>
+    <string name="reboot_later">Reboot later</string>
+    <string name="reboot_now">Reboot now</string>
+    <string name="reboot_scheduled_at">Reboot at <xliff:g id="time">%s</xliff:g></string>
+    <string name="schedule_reboot_dialog_title">Schedule reboot</string>
+    <string name="schedule_reboot_dialog_message">You can reboot now to apply the update, or schedule it for a later time.</string>
+    <string name="schedule_reboot_dialog_option_schedule">Schedule</string>
+    <string name="reschedule_reboot_dialog_title">Reschedule reboot</string>
+    <string name="reschedule_reboot_dialog_message">A reboot is scheduled for <xliff:g id="time">%s</xliff:g>. You can reboot now or choose a new time.</string>
+    <string name="reschedule_reboot_dialog_option_reschedule">Reschedule</string>
+    <string name="cancel_scheduled_reboot_dialog_option">Cancel schedule</string>
+    <string name="reboot_scheduling_notice">Reboot scheduled for <xliff:g id="time">%s</xliff:g></string>
 
     <string name="menu_refresh">Refresh</string>
     <string name="menu_preferences">Preferences</string>
@@ -88,6 +99,7 @@
     <string name="menu_changelog_url" translatable="false">https://download.lineageos.org/<xliff:g id="device_name">%1$s</xliff:g>/changes</string>
     <string name="menu_ab_perf_mode">Prioritize update process</string>
     <string name="menu_update_recovery">Update recovery</string>
+    <string name="menu_schedule_reboot_time">Schedule reboot</string>
 
     <string name="snack_updates_found">New updates found</string>
     <string name="snack_no_updates_found">No new updates found</string>

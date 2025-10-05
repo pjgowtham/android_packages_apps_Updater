@@ -39,6 +39,9 @@ public class UpdaterReceiver extends BroadcastReceiver {
     public static final String ACTION_INSTALL_REBOOT =
             "org.lineageos.updater.action.INSTALL_REBOOT";
 
+    public static final String ACTION_SCHEDULED_REBOOT =
+            "org.lineageos.updater.action.SCHEDULED_REBOOT";
+
     private static final String INSTALL_ERROR_NOTIFICATION_CHANNEL =
             "install_error_notification_channel";
 
@@ -89,9 +92,15 @@ public class UpdaterReceiver extends BroadcastReceiver {
         if (ACTION_INSTALL_REBOOT.equals(intent.getAction())) {
             PowerManager pm = context.getSystemService(PowerManager.class);
             pm.reboot(null);
+        } else if (ACTION_SCHEDULED_REBOOT.equals(intent.getAction())) {
+            PowerManager pm = context.getSystemService(PowerManager.class);
+            pm.reboot(null);
         } else if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
             SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(context);
-            pref.edit().remove(Constants.PREF_NEEDS_REBOOT_ID).apply();
+            pref.edit()
+                    .remove(Constants.PREF_NEEDS_REBOOT_ID)
+                    .remove(Constants.PREF_SCHEDULED_REBOOT_TIME)
+                    .apply();
 
             if (shouldShowUpdateFailedNotification(context)) {
                 pref.edit().putBoolean(Constants.PREF_INSTALL_NOTIFIED, true).apply();

@@ -17,6 +17,7 @@ package org.lineageos.updater;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.TimePickerDialog;
 import android.app.UiModeManager;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -35,6 +36,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.PowerManager;
 import android.os.SystemProperties;
 import android.util.Log;
 import android.util.TypedValue;
@@ -43,6 +45,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -80,6 +83,7 @@ import org.lineageos.updater.model.UpdateInfo;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 import java.util.UUID;
 
@@ -496,6 +500,9 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
             case VERIFIED:
                 showSnackbar(R.string.snack_download_verified, Snackbar.LENGTH_LONG);
                 break;
+            case INSTALLED:
+                promptForReboot(downloadId);
+                break;
         }
     }
 
@@ -524,7 +531,11 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
         Snackbar.make(findViewById(R.id.main_container), stringId, duration).show();
     }
 
-    @SuppressLint("ClickableViewAccessibility")
+    public void showSnackbar(CharSequence message, int duration) {
+        Snackbar.make(findViewById(R.id.main_container), message, duration).show();
+    }
+
+@SuppressLint("ClickableViewAccessibility")
     private void showPreferencesDialog() {
         View view = LayoutInflater.from(this).inflate(R.layout.preferences_dialog, null);
         Spinner autoCheckInterval = view.findViewById(R.id.preferences_auto_updates_check_interval);
@@ -533,6 +544,8 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
                 R.id.preferences_metered_network_warning);
         SwitchCompat abPerfMode = view.findViewById(R.id.preferences_ab_perf_mode);
         SwitchCompat updateRecovery = view.findViewById(R.id.preferences_update_recovery);
+        View scheduleRebootTime = view.findViewById(R.id.preferences_schedule_reboot_time);
+        TextView scheduleRebootTimeSummary = view.findViewById(R.id.preferences_schedule_reboot_time_summary);
 
         if (!Utils.isABDevice()) {
             abPerfMode.setVisibility(View.GONE);
@@ -544,6 +557,25 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
         meteredNetworkWarning.setChecked(prefs.getBoolean(Constants.PREF_METERED_NETWORK_WARNING,
                 prefs.getBoolean(Constants.PREF_MOBILE_DATA_WARNING, true)));
         abPerfMode.setChecked(prefs.getBoolean(Constants.PREF_AB_PERF_MODE, false));
+
+        final int defaultRebootTime = prefs.getInt(Constants.PREF_DEFAULT_REBOOT_TIME, 120);
+        scheduleRebootTimeSummary.setText(formatTime(defaultRebootTime));
+
+        scheduleRebootTime.setOnClickListener(v -> {
+            int hour = defaultRebootTime / 60;
+            int minute = defaultRebootTime % 60;
+            new TimePickerDialog(
+                    this,
+                    (timePicker, newHour, newMinute) -> {
+                        int newTime = newHour * 60 + newMinute;
+                        prefs.edit().putInt(Constants.PREF_DEFAULT_REBOOT_TIME, newTime).apply();
+                        scheduleRebootTimeSummary.setText(formatTime(newTime));
+                    },
+                    hour,
+                    minute,
+                    android.text.format.DateFormat.is24HourFormat(this)
+            ).show();
+        });
 
         if (Utils.isRecoveryUpdateExecPresent()) {
             updateRecovery.setVisibility(View.VISIBLE);
@@ -617,5 +649,98 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
             }
         };
         cm.registerNetworkCallback(request, mNetworkCallback);
+    }
+
+    public void promptForReboot(String downloadId) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        long scheduledTime = prefs.getLong(Constants.PREF_SCHEDULED_REBOOT_TIME, -1);
+
+        if (scheduledTime > 0) {
+            showRescheduleDialog(downloadId);
+        } else {
+            showScheduleDialog(downloadId);
+        }
+    }
+
+    private void showScheduleDialog(String downloadId) {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.schedule_reboot_dialog_title)
+                .setMessage(R.string.schedule_reboot_dialog_message)
+                .setPositiveButton(R.string.reboot_later,
+                        (dialog, which) -> showTimePickerDialog(downloadId))
+                .setNegativeButton(R.string.reboot_now,
+                        (dialog, which) -> {
+                            PowerManager pm = getSystemService(PowerManager.class);
+                            pm.reboot(null);
+                        })
+                .setCancelable(false)
+                .show();
+    }
+
+    private void showRescheduleDialog(String downloadId) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        long scheduledTime = prefs.getLong(Constants.PREF_SCHEDULED_REBOOT_TIME, -1);
+        String formattedTime = StringGenerator.getTimeLocalized(this, scheduledTime / 1000);
+
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.reschedule_reboot_dialog_title)
+                .setMessage(getString(R.string.reschedule_reboot_dialog_message, formattedTime))
+                .setPositiveButton(R.string.reschedule_reboot_dialog_option_reschedule,
+                        (dialog, which) -> showTimePickerDialog(downloadId))
+                .setNeutralButton(R.string.reboot,
+                        (dialog, which) -> {
+                            UpdatesCheckReceiver.cancelScheduledReboot(this);
+                            prefs.edit().remove(Constants.PREF_SCHEDULED_REBOOT_TIME).apply();
+                            PowerManager pm = getSystemService(PowerManager.class);
+                            pm.reboot(null);
+                        })
+                .setNegativeButton(R.string.cancel_scheduled_reboot_dialog_option,
+                        (dialog, which) -> {
+                            UpdatesCheckReceiver.cancelScheduledReboot(this);
+                            prefs.edit().remove(Constants.PREF_SCHEDULED_REBOOT_TIME).apply();
+                            mAdapter.notifyItemChanged(downloadId);
+                        })
+                .show();
+    }
+
+    private void showTimePickerDialog(String downloadId) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        final int defaultRebootTime = prefs.getInt(Constants.PREF_DEFAULT_REBOOT_TIME, 120);
+        int hour = defaultRebootTime / 60;
+        int minute = defaultRebootTime % 60;
+
+        new TimePickerDialog(
+                this,
+                (view, hourOfDay, minuteOfDay) -> {
+                    Calendar schedule = Calendar.getInstance();
+                    schedule.set(Calendar.HOUR_OF_DAY, hourOfDay);
+                    schedule.set(Calendar.MINUTE, minuteOfDay);
+                    schedule.set(Calendar.SECOND, 0);
+                    if (schedule.getTimeInMillis() <= System.currentTimeMillis()) {
+                        schedule.add(Calendar.DAY_OF_YEAR, 1);
+                    }
+
+                    prefs.edit().putLong(Constants.PREF_SCHEDULED_REBOOT_TIME,
+                            schedule.getTimeInMillis()).apply();
+                    UpdatesCheckReceiver.scheduleReboot(this, schedule.getTimeInMillis());
+
+                    mAdapter.notifyItemChanged(downloadId);
+
+                    String formattedTime = StringGenerator.getTimeLocalized(this,
+                            schedule.getTimeInMillis() / 1000);
+                    showSnackbar(getString(R.string.reboot_scheduling_notice, formattedTime),
+                            Snackbar.LENGTH_SHORT);
+                },
+                hour,
+                minute,
+                android.text.format.DateFormat.is24HourFormat(this)
+        ).show();
+    }
+
+    private String formatTime(int minutes) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(Calendar.HOUR_OF_DAY, minutes / 60);
+        calendar.set(Calendar.MINUTE, minutes % 60);
+        return android.text.format.DateFormat.getTimeFormat(this).format(calendar.getTime());
     }
 }

@@ -197,4 +197,25 @@ public class UpdatesCheckReceiver extends BroadcastReceiver {
         alarmMgr.cancel(getUpdatesCheckIntent(context));
         Log.d(TAG, "Cancelling pending one-shot check");
     }
+
+    private static PendingIntent getRebootIntent(Context context) {
+        Intent intent = new Intent(context, UpdaterReceiver.class);
+        intent.setAction(UpdaterReceiver.ACTION_SCHEDULED_REBOOT);
+        return PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    public static void scheduleReboot(Context context, long timeMillis) {
+        PendingIntent rebootIntent = getRebootIntent(context);
+        AlarmManager alarmMgr = context.getSystemService(AlarmManager.class);
+        alarmMgr.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, timeMillis, rebootIntent);
+
+        Date rebootDate = new Date(timeMillis);
+        Log.d(TAG, "Setting scheduled reboot: " + rebootDate);
+    }
+
+    public static void cancelScheduledReboot(Context context) {
+        AlarmManager alarmMgr = context.getSystemService(AlarmManager.class);
+        alarmMgr.cancel(getRebootIntent(context));
+        Log.d(TAG, "Cancelling scheduled reboot");
+    }
 }
