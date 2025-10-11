@@ -1,19 +1,9 @@
 /*
- * Copyright (C) 2017-2025 The LineageOS Project
- * Copyright (C) 2020-2022 SHIFT GmbH
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * SPDX-FileCopyrightText: The LineageOS Project
+ * SPDX-FileCopyrightText: 2020-2022 SHIFT GmbH
+ * SPDX-License-Identifier: Apache-2.0
  */
+
 package org.lineageos.updater;
 
 import android.annotation.SuppressLint;
@@ -24,7 +14,6 @@ import android.os.ParcelFileDescriptor;
 import android.util.Log;
 
 import org.lineageos.updater.controller.UpdaterController;
-import org.lineageos.updater.misc.StringGenerator;
 import org.lineageos.updater.misc.Utils;
 import org.lineageos.updater.model.Update;
 import org.lineageos.updater.model.UpdateStatus;
@@ -36,7 +25,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.text.DateFormat;
 import java.util.Enumeration;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -143,8 +131,6 @@ public class UpdateImporter {
 
     private Update buildLocalUpdate(File file) {
         final long timeStamp = getTimeStamp(file);
-        final String buildDate = StringGenerator.getDateLocalizedUTC(
-                activity, DateFormat.MEDIUM, timeStamp);
         final String name = activity.getString(R.string.local_update_name);
         final Update update = new Update();
         update.setAvailableOnline(false);
@@ -155,7 +141,7 @@ public class UpdateImporter {
         update.setTimestamp(timeStamp);
         update.setStatus(UpdateStatus.VERIFIED);
         update.setPersistentStatus(UpdateStatus.Persistent.VERIFIED);
-        update.setVersion(String.format("%s (%s)", name, buildDate));
+        update.setVersion(name);
         return update;
     }
 
