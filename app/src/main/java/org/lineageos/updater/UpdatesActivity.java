@@ -425,10 +425,10 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
             updateLastCheckedString();
             if (json.exists() && Utils.isUpdateCheckEnabled(this) &&
                     Utils.checkForNewUpdates(json, jsonNew)) {
-                UpdatesCheckReceiver.updateRepeatingUpdatesCheck(this);
+                UpdatesCheckReceiver.schedule(this);
             }
             // In case we set a one-shot check because of a previous failure
-            UpdatesCheckReceiver.cancelUpdatesCheck(this);
+            UpdatesCheckReceiver.cancel(this);
             //noinspection ResultOfMethodCallIgnored
             jsonNew.renameTo(json);
         } catch (IOException | JSONException e) {
@@ -581,10 +581,9 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
                             .apply();
 
                     if (Utils.isUpdateCheckEnabled(this)) {
-                        UpdatesCheckReceiver.scheduleRepeatingUpdatesCheck(this);
+                        UpdatesCheckReceiver.schedule(this);
                     } else {
-                        UpdatesCheckReceiver.cancelRepeatingUpdatesCheck(this);
-                        UpdatesCheckReceiver.cancelUpdatesCheck(this);
+                        UpdatesCheckReceiver.cancel(this);
                     }
 
                     if (Utils.isABDevice()) {
