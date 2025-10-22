@@ -18,28 +18,29 @@ package org.lineageos.updater.controller;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
-import android.database.sqlite.SQLiteDatabase;
 import android.os.PowerManager;
 import android.os.SystemClock;
 import android.util.Log;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
-import org.lineageos.updater.UpdatesDbHelper;
 import org.lineageos.updater.download.DownloadClient;
 import org.lineageos.updater.misc.Utils;
 import org.lineageos.updater.model.Update;
 import org.lineageos.updater.model.UpdateInfo;
 import org.lineageos.updater.model.UpdateStatus;
+import org.lineageos.updater.UpdateDao;
+import org.lineageos.updater.UpdateEntity;
+import org.lineageos.updater.UpdatesDatabase;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public class UpdaterController {
 
@@ -57,14 +58,14 @@ public class UpdaterController {
 
     private final Context mContext;
     private final LocalBroadcastManager mBroadcastManager;
-    private final UpdatesDbHelper mUpdatesDbHelper;
+    private final UpdateDao mUpdateDao;
 
     private final PowerManager.WakeLock mWakeLock;
 
     private final File mDownloadRoot;
 
     private int mActiveDownloads = 0;
-    private final Set<String> mVerifyingUpdates = new HashSet<>();
+    private final Set<String> mVerifyingUpdates = ConcurrentHashMap.newKeySet();
 
     public static synchronized UpdaterController getInstance(Context context) {
         if (sUpdaterController == null) {
@@ -75,18 +76,26 @@ public class UpdaterController {
 
     private UpdaterController(Context context) {
         mBroadcastManager = LocalBroadcastManager.getInstance(context);
-        mUpdatesDbHelper = new UpdatesDbHelper(context);
         mDownloadRoot = Utils.getDownloadPath(context);
         PowerManager powerManager = context.getSystemService(PowerManager.class);
         mWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Updater:wakelock");
         mWakeLock.setReferenceCounted(false);
         mContext = context.getApplicationContext();
 
+        UpdatesDatabase db = UpdatesDatabase.getInstance(mContext);
+        mUpdateDao = db.updateDao();
+
         Utils.cleanupDownloadsDir(context);
 
-        for (Update update : mUpdatesDbHelper.getUpdates()) {
-            addUpdate(update, false);
-        }
+        // Load updates from DB asynchronously
+        new Thread(() -> {
+            List<Update> updates = mUpdateDao.getUpdates().stream()
+                    .map(this::fromUpdateEntity)
+                    .collect(Collectors.toList());
+            for (Update update : updates) {
+                addUpdate(update, false);
+            }
+        }).start();
     }
 
     private static class DownloadEntry {
@@ -97,7 +106,46 @@ public class UpdaterController {
         }
     }
 
-    private final Map<String, DownloadEntry> mDownloads = new HashMap<>();
+    private final Map<String, DownloadEntry> mDownloads = new ConcurrentHashMap<>();
+
+    /**
+     * Converts a DB [UpdateEntity] to an [Update] model object.
+     */
+    private Update fromUpdateEntity(UpdateEntity entity) {
+        // Instantiate concrete Update class
+        Update update = new Update();
+
+        // Set fields available in UpdateInfo
+        update.setTimestamp(entity.getTimestamp());
+        update.setName(null); // Not persistent
+        update.setDownloadId(entity.getDownloadId());
+        update.setType(entity.getType());
+        update.setFileSize(entity.getFileSize());
+        update.setDownloadUrl(null); // Not persistent
+        update.setVersion(entity.getVersion());
+
+        // Set fields specific to Update persistence
+        update.setPersistentStatus(entity.getPersistentStatus());
+        update.setFile(entity.getFile());
+        return update;
+    }
+
+    /**
+     * Converts an [Update] model object to a DB [UpdateEntity].
+     */
+    private UpdateEntity toUpdateEntity(Update update) {
+        // ID is 0: OnConflictStrategy.REPLACE uses the unique downloadId
+        return new UpdateEntity(
+                0L,
+                update.getPersistentStatus(),
+                update.getFile(),
+                update.getDownloadId(),
+                update.getTimestamp(),
+                update.getType(),
+                update.getVersion(),
+                update.getFileSize()
+        );
+    }
 
     void notifyUpdateChange(String downloadId) {
         Intent intent = new Intent();
@@ -172,8 +220,8 @@ public class UpdaterController {
                 }
                 update.setStatus(UpdateStatus.DOWNLOADING);
                 update.setPersistentStatus(UpdateStatus.Persistent.INCOMPLETE);
-                new Thread(() -> mUpdatesDbHelper.addUpdateWithOnConflict(update,
-                        SQLiteDatabase.CONFLICT_REPLACE)).start();
+                // Persist update info (async)
+                new Thread(() -> mUpdateDao.addUpdate(toUpdateEntity(update))).start();
                 notifyUpdateChange(downloadId);
             }
 
@@ -259,11 +307,13 @@ public class UpdaterController {
                     //noinspection ResultOfMethodCallIgnored
                     file.setReadable(true, false);
                     update.setPersistentStatus(UpdateStatus.Persistent.VERIFIED);
-                    mUpdatesDbHelper.changeUpdateStatus(update);
+                    // Update status in DB
+                    mUpdateDao.changeUpdateStatus(downloadId, update.getPersistentStatus());
                     update.setStatus(UpdateStatus.VERIFIED);
                 } else {
                     update.setPersistentStatus(UpdateStatus.Persistent.UNKNOWN);
-                    mUpdatesDbHelper.removeUpdate(downloadId);
+                    // Remove from DB
+                    mUpdateDao.removeUpdate(downloadId);
                     update.setProgress(0);
                     update.setStatus(UpdateStatus.VERIFICATION_FAILED);
                 }
@@ -465,7 +515,7 @@ public class UpdaterController {
             if (file.exists() && !file.delete()) {
                 Log.e(TAG, "Could not delete " + file.getAbsolutePath());
             }
-            mUpdatesDbHelper.removeUpdate(update.getDownloadId());
+            mUpdateDao.removeUpdate(update.getDownloadId());
         }).start();
     }
 

@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+*      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -36,11 +36,13 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.lineageos.updater.R;
-import org.lineageos.updater.UpdatesDbHelper;
 import org.lineageos.updater.controller.UpdaterService;
 import org.lineageos.updater.model.Update;
 import org.lineageos.updater.model.UpdateBaseInfo;
 import org.lineageos.updater.model.UpdateInfo;
+import org.lineageos.updater.UpdateDao;
+import org.lineageos.updater.UpdateEntity;
+import org.lineageos.updater.UpdatesDatabase;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -317,31 +319,39 @@ public class Utils {
             return;
         }
 
-        Log.d(TAG, "Cleaning " + downloadPath);
-        if (!downloadPath.isDirectory()) {
-            return;
-        }
-        File[] files = downloadPath.listFiles();
-        if (files == null) {
-            return;
-        }
-
-        // Ideally the database is empty when we get here
-        List<String> knownPaths = new ArrayList<>();
-        try (UpdatesDbHelper dbHelper = new UpdatesDbHelper(context)) {
-            for (UpdateInfo update : dbHelper.getUpdates()) {
-                knownPaths.add(update.getFile().getAbsolutePath());
+        // Run DB and file I/O off the main thread
+        new Thread(() -> {
+            Log.d(TAG, "Cleaning " + downloadPath);
+            if (!downloadPath.isDirectory()) {
+                return;
             }
-        }
-        for (File file : files) {
-            if (!knownPaths.contains(file.getAbsolutePath())) {
-                Log.d(TAG, "Deleting " + file.getAbsolutePath());
-                //noinspection ResultOfMethodCallIgnored
-                file.delete();
+            File[] files = downloadPath.listFiles();
+            if (files == null) {
+                return;
             }
-        }
 
-        preferences.edit().putBoolean(DOWNLOADS_CLEANUP_DONE, true).apply();
+            // Ideally the database is empty when we get here
+            UpdatesDatabase db = UpdatesDatabase.getInstance(context);
+            UpdateDao dao = db.updateDao();
+            List<String> knownPaths = new ArrayList<>();
+
+            // This is now a background thread, so this query is safe
+            for (UpdateEntity update : dao.getUpdates()) {
+                if (update.getFile() != null) {
+                    knownPaths.add(update.getFile().getAbsolutePath());
+                }
+            }
+
+            for (File file : files) {
+                if (!knownPaths.contains(file.getAbsolutePath())) {
+                    Log.d(TAG, "Deleting " + file.getAbsolutePath());
+                    //noinspection ResultOfMethodCallIgnored
+                    file.delete();
+                }
+            }
+
+            preferences.edit().putBoolean(DOWNLOADS_CLEANUP_DONE, true).apply();
+        }).start();
     }
 
     public static File appendSequentialNumber(final File file) {
