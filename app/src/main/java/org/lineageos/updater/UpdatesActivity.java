@@ -81,9 +81,24 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
     private BroadcastReceiver mBroadcastReceiver;
 
     private UpdatesListAdapter mAdapter;
+    private final ServiceConnection mConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName className,
+                                       IBinder service) {
+            UpdaterService.LocalBinder binder = (UpdaterService.LocalBinder) service;
+            mUpdaterService = binder.getService();
+            mAdapter.setUpdaterController(mUpdaterService.getUpdaterController());
+            getUpdatesList();
+        }
 
+        @Override
+        public void onServiceDisconnected(ComponentName componentName) {
+            mAdapter.setUpdaterController(null);
+            mUpdaterService = null;
+            mAdapter.notifyDataSetChanged();
+        }
+    };
     private boolean mIsTV;
-
     private UpdateInfo mToBeExported = null;
     private final ActivityResultLauncher<Intent> mExportUpdate = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
@@ -96,9 +111,10 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
                     }
                 }
             });
-
     private UpdateImporter mUpdateImporter;
     private AlertDialog importDialog;
+    private SharedPreferences prefs;
+    private SharedPreferences.OnSharedPreferenceChangeListener mPrefListener;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -176,6 +192,12 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
         headerTitle.setText(getString(R.string.header_title_text,
                 Utils.getBuildVersion()));
 
+        prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        mPrefListener = (sharedPreferences, key) -> {
+            if (Constants.PREF_LAST_UPDATE_CHECK.equals(key)) {
+                runOnUiThread(this::updateLastCheckedString);
+            }
+        };
         updateLastCheckedString();
 
         TextView headerBuildVersion = findViewById(R.id.header_build_version);
@@ -230,6 +252,7 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
         intentFilter.addAction(UpdaterController.ACTION_INSTALL_PROGRESS);
         intentFilter.addAction(UpdaterController.ACTION_UPDATE_REMOVED);
         LocalBroadcastManager.getInstance(this).registerReceiver(mBroadcastReceiver, intentFilter);
+        prefs.registerOnSharedPreferenceChangeListener(mPrefListener);
     }
 
     @Override
@@ -249,6 +272,7 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
         if (mUpdaterService != null) {
             unbindService(mConnection);
         }
+        prefs.unregisterOnSharedPreferenceChangeListener(mPrefListener);
         super.onStop();
     }
 
@@ -356,24 +380,6 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
                 .show();
     }
 
-    private final ServiceConnection mConnection = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName className,
-                                       IBinder service) {
-            UpdaterService.LocalBinder binder = (UpdaterService.LocalBinder) service;
-            mUpdaterService = binder.getService();
-            mAdapter.setUpdaterController(mUpdaterService.getUpdaterController());
-            getUpdatesList();
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName componentName) {
-            mAdapter.setUpdaterController(null);
-            mUpdaterService = null;
-            mAdapter.notifyDataSetChanged();
-        }
-    };
-
     private void loadUpdatesList(File jsonFile)
             throws IOException, JSONException {
         Log.d(TAG, "Adding remote updates");
@@ -419,9 +425,7 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
     }
 
     private void updateLastCheckedString() {
-        final SharedPreferences preferences =
-                PreferenceManager.getDefaultSharedPreferences(this);
-        long lastCheck = preferences.getLong(Constants.PREF_LAST_UPDATE_CHECK, -1) / 1000;
+        long lastCheck = prefs.getLong(Constants.PREF_LAST_UPDATE_CHECK, -1) / 1000;
         String lastCheckString = getString(R.string.header_last_updates_check,
                 StringGenerator.getDateLocalized(this, DateFormat.LONG, lastCheck),
                 StringGenerator.getTimeLocalized(this, lastCheck));
@@ -487,7 +491,6 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
             abPerfMode.setVisibility(View.GONE);
         }
 
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         autoCheckInterval.setSelection(Utils.getUpdateCheckSetting(this));
         autoDelete.setChecked(prefs.getBoolean(Constants.PREF_AUTO_DELETE_UPDATES, false));
         meteredNetworkWarning.setChecked(prefs.getBoolean(Constants.PREF_METERED_NETWORK_WARNING,
@@ -534,15 +537,14 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
     }
 
     private void maybeShowWelcomeMessage() {
-        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
-        boolean alreadySeen = preferences.getBoolean(Constants.HAS_SEEN_WELCOME_MESSAGE, false);
+        boolean alreadySeen = prefs.getBoolean(Constants.HAS_SEEN_WELCOME_MESSAGE, false);
         if (alreadySeen) {
             return;
         }
         new AlertDialog.Builder(this)
                 .setTitle(R.string.welcome_title)
                 .setMessage(R.string.welcome_message)
-                .setPositiveButton(R.string.info_dialog_ok, (dialog, which) -> preferences.edit()
+                .setPositiveButton(R.string.info_dialog_ok, (dialog, which) -> prefs.edit()
                         .putBoolean(Constants.HAS_SEEN_WELCOME_MESSAGE, true)
                         .apply())
                 .show();
