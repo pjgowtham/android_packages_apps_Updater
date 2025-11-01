@@ -6,7 +6,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -142,17 +142,24 @@ public class UpdateImporter {
     private Update buildLocalUpdate(File file) {
         final long timeStamp = getTimeStamp(file);
         final String name = activity.getString(R.string.local_update_name);
-        final Update update = new Update();
-        update.setAvailableOnline(false);
-        update.setName(name);
-        update.setFile(file);
-        update.setFileSize(file.length());
-        update.setDownloadId(Update.LOCAL_ID);
-        update.setTimestamp(timeStamp);
-        update.setStatus(UpdateStatus.VERIFIED);
-        update.setPersistentStatus(UpdateStatus.Persistent.VERIFIED);
-        update.setVersion(name);
-        return update;
+        return new Update(
+                /* downloadId */ Update.LOCAL_ID,
+                /* downloadUrl */ "",
+                /* fileSize */ file.length(),
+                /* name */ name,
+                /* timestamp */ timeStamp,
+                /* type */ name, // Not relevant for local updates
+                /* version */ name,
+                /* availableOnline */ false,
+                /* eta */ 0,
+                /* file */ file,
+                /* installProgress */ 0,
+                /* isFinalizing */ false,
+                /* persistentStatus */ UpdateStatus.Persistent.VERIFIED,
+                /* progress */ 0,
+                /* speed */ 0,
+                /* status */ UpdateStatus.VERIFIED
+        );
     }
 
     @SuppressWarnings("ResultOfMethodCallIgnored")

@@ -17,6 +17,7 @@ import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import org.lineageos.updater.model.Update
+import org.lineageos.updater.model.UpdateStatus
 import java.io.File
 
 /* Defines the Room database, DAO, entity, and conversion methods. */
@@ -66,15 +67,19 @@ abstract class UpdatesDatabase : RoomDatabase() {
          * Converts an UpdateEntity from database to Update model.
          */
         @JvmStatic
-        fun toModel(entity: UpdateEntity) = Update().apply {
-            downloadId = entity.downloadId
-            file = entity.path?.let { File(it) }
-            fileSize = entity.fileSize ?: 0
-            name = file?.name
-            persistentStatus = entity.persistentStatus ?: 0
-            timestamp = entity.timestamp ?: 0
-            type = entity.type
-            version = entity.version
+        fun toModel(entity: UpdateEntity): Update {
+            val file = entity.path?.let { File(it) }
+            return Update(
+                downloadId = entity.downloadId,
+                downloadUrl = "",
+                fileSize = entity.fileSize ?: 0L,
+                name = file?.name ?: entity.downloadId,
+                timestamp = entity.timestamp ?: 0L,
+                type = entity.type ?: "",
+                version = entity.version ?: "",
+                file = file,
+                persistentStatus = entity.persistentStatus ?: UpdateStatus.Persistent.UNKNOWN
+            )
         }
     }
 }

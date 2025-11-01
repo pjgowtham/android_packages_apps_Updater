@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -40,6 +40,7 @@ import org.lineageos.updater.model.UpdateInfo;
 import org.lineageos.updater.UpdateDao;
 import org.lineageos.updater.UpdateEntity;
 import org.lineageos.updater.UpdatesDatabase;
+import org.lineageos.updater.model.UpdateStatus;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -69,15 +70,24 @@ public class Utils {
     // This should really return an UpdateBaseInfo object, but currently this only
     // used to initialize UpdateInfo objects
     private static UpdateInfo parseJsonUpdate(JSONObject object) throws JSONException {
-        Update update = new Update();
-        update.setTimestamp(object.getLong("datetime"));
-        update.setName(object.getString("filename"));
-        update.setDownloadId(object.getString("id"));
-        update.setType(object.getString("romtype"));
-        update.setFileSize(object.getLong("size"));
-        update.setDownloadUrl(object.getString("url"));
-        update.setVersion(object.getString("version"));
-        return update;
+        return new Update(
+                /* downloadId */ object.getString("id"),
+                /* downloadUrl */ object.getString("url"),
+                /* fileSize */ object.getLong("size"),
+                /* name */ object.getString("filename"),
+                /* timestamp */ object.getLong("datetime"),
+                /* type */ object.getString("romtype"),
+                /* version */ object.getString("version"),
+                /* availableOnline */ false, // This is set by the controller
+                /* eta */ 0,
+                /* file */ null,
+                /* installProgress */ 0,
+                /* isFinalizing */ false,
+                /* persistentStatus */ UpdateStatus.Persistent.UNKNOWN,
+                /* progress */ 0,
+                /* speed */ 0,
+                /* status */ UpdateStatus.UNKNOWN
+        );
     }
 
     public static boolean isCompatible(UpdateBaseInfo update) {
