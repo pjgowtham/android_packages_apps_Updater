@@ -158,7 +158,7 @@ public class UpdaterController {
         return new DownloadClient.DownloadCallback() {
 
             @Override
-            public void onResponse(DownloadClient.Headers headers) {
+            public void onResponse(okhttp3.Headers headers) {
                 final DownloadEntry entry = mDownloads.get(downloadId);
                 if (entry == null) {
                     return;

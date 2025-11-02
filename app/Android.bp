@@ -43,6 +43,7 @@ android_app {
         "androidx.room_room-runtime",
         "androidx.work_work-runtime",
         "com.google.android.material_material",
+        "Updater_com.squareup.okhttp3_okhttp",
     ],
 
     optimize: {

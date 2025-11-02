@@ -98,6 +98,7 @@ dependencies {
     implementation("androidx.room:room-runtime:2.8.3")
     implementation("androidx.work:work-runtime:2.10.5")
     implementation("com.google.android.material:material:1.9.0-alpha01")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 }
 
 configure<GenerateBpPluginExtension> {

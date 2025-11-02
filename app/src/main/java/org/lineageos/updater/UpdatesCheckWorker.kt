@@ -65,7 +65,7 @@ class UpdatesCheckWorker(
                         }
                     }
 
-                    override fun onResponse(headers: DownloadClient.Headers) {}
+                    override fun onResponse(headers: okhttp3.Headers) {}
 
                     override fun onSuccess() {
                         if (!continuation.isActive) return
