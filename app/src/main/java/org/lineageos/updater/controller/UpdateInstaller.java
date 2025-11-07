@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2022 The LineageOS Project
+ * Copyright (C) 2017-2025 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,35 +13,41 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.lineageos.updater.controller;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.os.SystemClock;
+import android.os.FileUtils;
 import android.os.SystemProperties;
 import android.util.Log;
 
 import androidx.preference.PreferenceManager;
 
 import org.lineageos.updater.misc.Constants;
-import org.lineageos.updater.misc.FileUtils;
 import org.lineageos.updater.misc.Utils;
 import org.lineageos.updater.model.UpdateInfo;
 import org.lineageos.updater.model.UpdateStatus;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.Files;
+import java.nio.file.attribute.PosixFilePermission;
 import java.util.HashSet;
 import java.util.Set;
 
+/**
+ * Handles installing updates and preparing uncrypt copies if required.
+ * Uses android.os.FileUtils for file copy operations without progress tracking.
+ */
 class UpdateInstaller {
 
     private static final String TAG = "UpdateInstaller";
 
-    private static UpdateInstaller sInstance = null;
-    private static String sInstallingUpdate = null;
+    private static UpdateInstaller sInstance;
+    private static String sInstallingUpdate;
 
     private Thread mPrepareUpdateThread;
     private volatile boolean mCanCancel;
@@ -54,10 +60,9 @@ class UpdateInstaller {
         mUpdaterController = controller;
     }
 
-    static synchronized UpdateInstaller getInstance(Context context,
-            UpdaterController updaterController) {
+    static synchronized UpdateInstaller getInstance(Context context, UpdaterController controller) {
         if (sInstance == null) {
-            sInstance = new UpdateInstaller(context, updaterController);
+            sInstance = new UpdateInstaller(context, controller);
         }
         return sInstance;
     }
@@ -77,12 +82,12 @@ class UpdateInstaller {
         }
 
         UpdateInfo update = mUpdaterController.getUpdate(downloadId);
-        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(mContext);
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
         long buildTimestamp = SystemProperties.getLong(Constants.PROP_BUILD_DATE, 0);
-        long lastBuildTimestamp = preferences.getLong(Constants.PREF_INSTALL_OLD_TIMESTAMP,
-                buildTimestamp);
+        long lastBuildTimestamp = prefs.getLong(Constants.PREF_INSTALL_OLD_TIMESTAMP, buildTimestamp);
         boolean isReinstalling = buildTimestamp == lastBuildTimestamp;
-        preferences.edit()
+
+        prefs.edit()
                 .putLong(Constants.PREF_INSTALL_OLD_TIMESTAMP, buildTimestamp)
                 .putLong(Constants.PREF_INSTALL_NEW_TIMESTAMP, update.getTimestamp())
                 .putString(Constants.PREF_INSTALL_PACKAGE_PATH, update.getFile().getAbsolutePath())
@@ -91,8 +96,6 @@ class UpdateInstaller {
                 .apply();
 
         if (Utils.isEncrypted(mContext, update.getFile())) {
-            // uncrypt rewrites the file so that it can be read without mounting
-            // the filesystem, so create a copy of it.
             prepareForUncryptAndInstall(update);
         } else {
             installPackage(update.getFile(), downloadId);
@@ -110,69 +113,64 @@ class UpdateInstaller {
         }
     }
 
+    /**
+     * Creates an unencrypted copy of the update package and installs it.
+     */
     private synchronized void prepareForUncryptAndInstall(UpdateInfo update) {
-        String uncryptFilePath = update.getFile().getAbsolutePath() + Constants.UNCRYPT_FILE_EXT;
-        File uncryptFile = new File(uncryptFilePath);
+        String uncryptPath = update.getFile().getAbsolutePath() + Constants.UNCRYPT_FILE_EXT;
+        File uncryptFile = new File(uncryptPath);
 
-        Runnable copyUpdateRunnable = new Runnable() {
-            private long mLastUpdate = -1;
+        Runnable copyRunnable = () -> {
+            try {
+                mCanCancel = true;
 
-            final FileUtils.ProgressCallBack mProgressCallBack = new FileUtils.ProgressCallBack() {
-                @Override
-                public void update(int progress) {
-                    long now = SystemClock.elapsedRealtime();
-                    if (mLastUpdate < 0 || now - mLastUpdate > 500) {
-                        mUpdaterController.getActualUpdate(update.getDownloadId())
-                                .setInstallProgress(progress);
-                        mUpdaterController.notifyInstallProgress(update.getDownloadId());
-                        mLastUpdate = now;
-                    }
+                try (FileInputStream in = new FileInputStream(update.getFile());
+                     FileOutputStream out = new FileOutputStream(uncryptFile)) {
+                    FileUtils.copy(in, out);
                 }
-            };
 
-            @Override
-            public void run() {
+                // Set permissions
                 try {
-                    mCanCancel = true;
-                    FileUtils.copyFile(update.getFile(), uncryptFile, mProgressCallBack);
-                    try {
-                        Set<PosixFilePermission> perms = new HashSet<>();
-                        perms.add(PosixFilePermission.OWNER_READ);
-                        perms.add(PosixFilePermission.OWNER_WRITE);
-                        perms.add(PosixFilePermission.OTHERS_READ);
-                        perms.add(PosixFilePermission.GROUP_READ);
-                        Files.setPosixFilePermissions(uncryptFile.toPath(), perms);
-                    } catch (IOException exception) {}
-
-                    mCanCancel = false;
-                    if (mPrepareUpdateThread.isInterrupted()) {
-                        mUpdaterController.getActualUpdate(update.getDownloadId())
-                                .setStatus(UpdateStatus.INSTALLATION_CANCELLED);
-                        mUpdaterController.getActualUpdate(update.getDownloadId())
-                                .setInstallProgress(0);
-                        //noinspection ResultOfMethodCallIgnored
-                        uncryptFile.delete();
-                    } else {
-                        installPackage(uncryptFile, update.getDownloadId());
-                    }
-                } catch (IOException e) {
-                    Log.e(TAG, "Could not copy update", e);
-                    //noinspection ResultOfMethodCallIgnored
-                    uncryptFile.delete();
-                    mUpdaterController.getActualUpdate(update.getDownloadId())
-                            .setStatus(UpdateStatus.INSTALLATION_FAILED);
-                } finally {
-                    synchronized (UpdateInstaller.this) {
-                        mCanCancel = false;
-                        mPrepareUpdateThread = null;
-                        sInstallingUpdate = null;
-                    }
-                    mUpdaterController.notifyUpdateChange(update.getDownloadId());
+                    Set<PosixFilePermission> perms = new HashSet<>();
+                    perms.add(PosixFilePermission.OWNER_READ);
+                    perms.add(PosixFilePermission.OWNER_WRITE);
+                    perms.add(PosixFilePermission.GROUP_READ);
+                    perms.add(PosixFilePermission.OTHERS_READ);
+                    Files.setPosixFilePermissions(uncryptFile.toPath(), perms);
+                } catch (IOException ignored) {
                 }
+
+                mCanCancel = false;
+                if (mPrepareUpdateThread.isInterrupted()) {
+                    mUpdaterController.getActualUpdate(update.getDownloadId())
+                            .setStatus(UpdateStatus.INSTALLATION_CANCELLED);
+                    if (!uncryptFile.delete()) {
+                        Log.w(TAG, "Failed to delete uncrypt file: " + uncryptFile);
+                    }
+
+                } else {
+                    installPackage(uncryptFile, update.getDownloadId());
+                }
+
+            } catch (IOException e) {
+                Log.e(TAG, "Failed to copy update for uncrypt install", e);
+                if (!uncryptFile.delete()) {
+                    Log.w(TAG, "Failed to delete uncrypt file: " + uncryptFile);
+                }
+
+                mUpdaterController.getActualUpdate(update.getDownloadId())
+                        .setStatus(UpdateStatus.INSTALLATION_FAILED);
+            } finally {
+                synchronized (UpdateInstaller.this) {
+                    mCanCancel = false;
+                    mPrepareUpdateThread = null;
+                    sInstallingUpdate = null;
+                }
+                mUpdaterController.notifyUpdateChange(update.getDownloadId());
             }
         };
 
-        mPrepareUpdateThread = new Thread(copyUpdateRunnable);
+        mPrepareUpdateThread = new Thread(copyRunnable);
         mPrepareUpdateThread.start();
         sInstallingUpdate = update.getDownloadId();
         mCanCancel = false;
