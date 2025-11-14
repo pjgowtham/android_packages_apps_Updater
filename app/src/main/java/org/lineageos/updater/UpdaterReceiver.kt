@@ -1,0 +1,110 @@
+/*
+ * SPDX-FileCopyrightText: 2025 The LineageOS Project
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+package org.lineageos.updater
+
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.os.PowerManager
+import android.os.SystemProperties
+import androidx.core.app.NotificationCompat
+import androidx.core.content.edit
+import androidx.core.content.getSystemService
+import androidx.preference.PreferenceManager
+import org.lineageos.updater.controller.UpdaterService
+import org.lineageos.updater.misc.Constants
+import org.lineageos.updater.misc.getDateLocalizedUTC
+import org.lineageos.updater.misc.Utils
+import java.text.DateFormat
+
+class UpdaterReceiver : BroadcastReceiver() {
+
+    override fun onReceive(context: Context, intent: Intent?) {
+        when (intent?.action) {
+            ACTION_INSTALL_REBOOT -> {
+                val pm = context.getSystemService<PowerManager>()
+                pm?.reboot(null)
+            }
+            Intent.ACTION_BOOT_COMPLETED -> {
+                val pref = PreferenceManager.getDefaultSharedPreferences(context)
+                pref.edit {
+                    remove(Constants.PREF_NEEDS_REBOOT_ID)
+                }
+
+                val cleanupIntent = Intent(context, UpdaterService::class.java).apply {
+                    action = UpdaterService.ACTION_POST_REBOOT_CLEANUP
+                }
+                context.startService(cleanupIntent)
+
+                if (shouldShowUpdateFailedNotification(context)) {
+                    pref.edit {
+                        putBoolean(Constants.PREF_INSTALL_NOTIFIED, true)
+                    }
+                    showUpdateFailedNotification(context)
+                }
+            }
+        }
+    }
+
+    companion object {
+        const val ACTION_INSTALL_REBOOT = "org.lineageos.updater.action.INSTALL_REBOOT"
+
+        private fun shouldShowUpdateFailedNotification(context: Context): Boolean {
+            val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+
+            // We can't easily detect failed re-installations
+            if (preferences.getBoolean(Constants.PREF_INSTALL_AGAIN, false) ||
+                preferences.getBoolean(Constants.PREF_INSTALL_NOTIFIED, false)
+            ) {
+                return false
+            }
+
+            val buildTimestamp = SystemProperties.getLong(Constants.PROP_BUILD_DATE, 0)
+            val lastBuildTimestamp = preferences.getLong(Constants.PREF_INSTALL_OLD_TIMESTAMP, -1)
+            return buildTimestamp == lastBuildTimestamp
+        }
+
+        private fun showUpdateFailedNotification(context: Context) {
+            val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+            val buildDate = getDateLocalizedUTC(
+                context,
+                DateFormat.MEDIUM, preferences.getLong(Constants.PREF_INSTALL_NEW_TIMESTAMP, 0)
+            )
+            val buildInfo = context.getString(
+                R.string.list_build_version_date,
+                Utils.getBuildVersion(), buildDate
+            )
+
+            val notificationIntent = Intent(context, UpdatesActivity::class.java)
+            val intent = PendingIntent.getActivity(
+                context, 0, notificationIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val notificationChannel = NotificationChannel(
+                Constants.NOTIFICATION_CHANNEL_INSTALL_ERROR,
+                context.getString(R.string.update_failed_channel_title),
+                NotificationManager.IMPORTANCE_LOW
+            )
+            val builder = NotificationCompat.Builder(
+                context,
+                Constants.NOTIFICATION_CHANNEL_INSTALL_ERROR
+            )
+                .setContentIntent(intent)
+                .setSmallIcon(R.drawable.ic_system_update)
+                .setContentTitle(context.getString(R.string.update_failed_notification))
+                .setStyle(NotificationCompat.BigTextStyle().bigText(buildInfo))
+                .setContentText(buildInfo)
+
+            val nm = context.getSystemService<NotificationManager>()
+            nm?.createNotificationChannel(notificationChannel)
+            nm?.notify(Constants.NOTIFICATION_ID_INSTALL_ERROR, builder.build())
+        }
+    }
+}
