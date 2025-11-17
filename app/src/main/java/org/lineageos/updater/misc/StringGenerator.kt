@@ -24,7 +24,7 @@ import org.lineageos.updater.R
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
-import java.text.DateFormat as JavaDateFormat
+import java.text.DateFormat
 
 /**
  * Gets the current locale from the application resources, handling API level differences.
@@ -45,8 +45,7 @@ fun getCurrentLocale(context: Context): Locale {
  * @return the localized time string
  */
 fun getTimeLocalized(context: Context, unixTimestamp: Long): String {
-    // We use JavaDateFormat (aliased) as it is the standard for Android compatibility
-    val f = JavaDateFormat.getTimeInstance(JavaDateFormat.SHORT, getCurrentLocale(context))
+    val f = DateFormat.getTimeInstance(DateFormat.SHORT, getCurrentLocale(context))
     val date = Date(unixTimestamp * 1000)
     return f.format(date)
 }
@@ -60,7 +59,7 @@ fun getTimeLocalized(context: Context, unixTimestamp: Long): String {
  * @return the localized date string
  */
 fun getDateLocalized(context: Context, dateFormat: Int, unixTimestamp: Long): String {
-    val f = JavaDateFormat.getDateInstance(dateFormat, getCurrentLocale(context))
+    val f = DateFormat.getDateInstance(dateFormat, getCurrentLocale(context))
     val date = Date(unixTimestamp * 1000)
     return f.format(date)
 }
@@ -74,7 +73,7 @@ fun getDateLocalized(context: Context, dateFormat: Int, unixTimestamp: Long): St
  * @return the localized UTC date string
  */
 fun getDateLocalizedUTC(context: Context, dateFormat: Int, unixTimestamp: Long): String {
-    val f = JavaDateFormat.getDateInstance(dateFormat, getCurrentLocale(context))
+    val f = DateFormat.getDateInstance(dateFormat, getCurrentLocale(context))
     f.timeZone = TimeZone.getTimeZone("UTC")
     val date = Date(unixTimestamp * 1000)
     return f.format(date)
