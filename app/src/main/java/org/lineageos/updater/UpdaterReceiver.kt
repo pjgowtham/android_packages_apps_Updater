@@ -78,7 +78,7 @@ class UpdaterReceiver : BroadcastReceiver() {
             )
             val buildInfo = context.getString(
                 R.string.list_build_version_date,
-                Utils.getBuildVersion(), buildDate
+                Utils.buildVersion, buildDate
             )
 
             val notificationIntent = Intent(context, UpdatesActivity::class.java)
