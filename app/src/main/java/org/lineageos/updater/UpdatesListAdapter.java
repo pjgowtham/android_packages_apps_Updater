@@ -194,7 +194,9 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
             viewHolder.mProgressBar.setIndeterminate(true);
         } else {
             canDelete = true;
-            setButtonAction(viewHolder.mAction, Action.RESUME, downloadId, !isBusy());
+            boolean canResume = !mUpdaterController.isVerifyingUpdate(downloadId)
+                    && !mUpdaterController.isInstallingUpdate(downloadId);
+            setButtonAction(viewHolder.mAction, Action.RESUME, downloadId, canResume);
             String downloaded = Formatter.formatShortFileSize(mActivity,
                     update.getFile().length());
             String total = Formatter.formatShortFileSize(mActivity, update.getFileSize());
@@ -228,7 +230,9 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
             setButtonAction(viewHolder.mAction, Action.INFO, downloadId, !isBusy());
         } else {
             viewHolder.mMenu.setOnClickListener(getClickListener(update, false, viewHolder.mMenu));
-            setButtonAction(viewHolder.mAction, Action.DOWNLOAD, downloadId, !isBusy());
+            boolean canDownload = !mUpdaterController.isVerifyingUpdate(downloadId)
+                    && !mUpdaterController.isInstallingUpdate(downloadId);
+            setButtonAction(viewHolder.mAction, Action.DOWNLOAD, downloadId, canDownload);
         }
         String fileSize = Formatter.formatShortFileSize(mActivity, update.getFileSize());
         viewHolder.mBuildSize.setText(fileSize);
@@ -320,6 +324,51 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
         notifyItemRangeChanged(position, getItemCount());
     }
 
+    private void startDownloadWithConfirmation(final String downloadId) {
+        if (mUpdaterController.hasActiveDownloads()) {
+            new AlertDialog.Builder(mActivity)
+                    .setTitle(R.string.download_switch_confirm_title)
+                    .setMessage(R.string.download_switch_confirm_message)
+                    .setPositiveButton(android.R.string.ok,
+                            (dialog, which) -> startDownloadWithWarning(downloadId))
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show();
+        } else {
+            startDownloadWithWarning(downloadId);
+        }
+    }
+
+    private void resumeDownloadWithConfirmation(final String downloadId) {
+        if (mUpdaterController.hasActiveDownloads()) {
+            new AlertDialog.Builder(mActivity)
+                    .setTitle(R.string.download_switch_confirm_title)
+                    .setMessage(R.string.download_switch_confirm_message)
+                    .setPositiveButton(android.R.string.ok,
+                            (dialog, which) -> resumeDownloadWithWarning(downloadId))
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show();
+        } else {
+            resumeDownloadWithWarning(downloadId);
+        }
+    }
+
+    private void resumeDownloadWithWarning(final String downloadId) {
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(mActivity);
+        boolean warn = preferences.getBoolean(Constants.PREF_METERED_NETWORK_WARNING, true);
+        if (!(Utils.isNetworkMetered(mActivity) && warn)) {
+            mUpdaterController.resumeDownload(downloadId);
+            return;
+        }
+
+        new AlertDialog.Builder(mActivity)
+                .setTitle(R.string.update_over_metered_network_title)
+                .setMessage(R.string.update_over_metered_network_message)
+                .setPositiveButton(R.string.action_resume,
+                        (dialog, which) -> mUpdaterController.resumeDownload(downloadId))
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
     private void startDownloadWithWarning(final String downloadId) {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(mActivity);
         boolean warn = preferences.getBoolean(Constants.PREF_METERED_NETWORK_WARNING, true);
@@ -346,7 +395,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
             case DOWNLOAD:
                 button.setText(R.string.action_download);
                 button.setEnabled(enabled);
-                clickListener = enabled ? view -> startDownloadWithWarning(downloadId) : null;
+                clickListener = enabled ? view -> startDownloadWithConfirmation(downloadId) : null;
                 break;
             case PAUSE:
                 button.setText(R.string.action_pause);
@@ -362,7 +411,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
                         update.getFile().length() == update.getFileSize();
                 clickListener = enabled ? view -> {
                     if (canInstall) {
-                        mUpdaterController.resumeDownload(downloadId);
+                        resumeDownloadWithConfirmation(downloadId);
                     } else {
                         mActivity.showSnackbar(R.string.snack_update_not_installable,
                                 Snackbar.LENGTH_LONG);
