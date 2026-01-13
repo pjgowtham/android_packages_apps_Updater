@@ -24,26 +24,23 @@ object DeviceInfoUtils : SettingsLibDeviceInfoUtils() {
 
     @JvmStatic
     val buildDateTimestamp: Long
-        get() = SystemProperties.getLong(PROP_BUILD_DATE, 0)
+        get() = 1764527400L // SystemProperties.getLong(PROP_BUILD_DATE, 0)
 
     @JvmStatic
     val buildVersion: String
-        get() = SystemProperties.get(PROP_BUILD_VERSION, "")
+        get() = "23.0" // SystemProperties.get(PROP_BUILD_VERSION, "")
 
     @JvmStatic
     val buildVersionIncremental: String
-        get() = SystemProperties.get(PROP_BUILD_VERSION_INCREMENTAL, "")
+        get() = "000000" // SystemProperties.get(PROP_BUILD_VERSION_INCREMENTAL, "")
 
     @JvmStatic
     val device: String
-        get() = SystemProperties.get(
-            PROP_NEXT_DEVICE,
-            SystemProperties.get(PROP_DEVICE)
-        )
+        get() = "lemonadep" // SystemProperties.get(PROP_NEXT_DEVICE, SystemProperties.get(PROP_DEVICE))
 
     @JvmStatic
     val releaseType: String
-        get() = SystemProperties.get(PROP_RELEASE_TYPE)
+        get() = "nightly" // SystemProperties.get(PROP_RELEASE_TYPE)
 
     @JvmStatic
     val isABDevice: Boolean by lazy {
