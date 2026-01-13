@@ -194,7 +194,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
             viewHolder.mProgressBar.setIndeterminate(true);
         } else {
             canDelete = true;
-            setButtonAction(viewHolder.mAction, Action.RESUME, downloadId, !isBusy());
+            setButtonAction(viewHolder.mAction, Action.RESUME, downloadId, true);
             String downloaded = Formatter.formatShortFileSize(mActivity,
                     update.getFile().length());
             String total = Formatter.formatShortFileSize(mActivity, update.getFileSize());
@@ -220,15 +220,16 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
             setButtonAction(viewHolder.mAction, Action.REBOOT, downloadId, true);
         } else if (update.getPersistentStatus() == UpdateStatus.Persistent.VERIFIED) {
             viewHolder.mMenu.setOnClickListener(getClickListener(update, true, viewHolder.mMenu));
+            boolean canInstall = Utils.canInstall(update);
             setButtonAction(viewHolder.mAction,
-                    Utils.canInstall(update) ? Action.INSTALL : Action.DELETE,
-                    downloadId, !isBusy());
+                    canInstall ? Action.INSTALL : Action.DELETE,
+                    downloadId, !canInstall || !mUpdaterController.isInstallingUpdate());
         } else if (!Utils.canInstall(update)) {
             viewHolder.mMenu.setOnClickListener(getClickListener(update, false, viewHolder.mMenu));
-            setButtonAction(viewHolder.mAction, Action.INFO, downloadId, !isBusy());
+            setButtonAction(viewHolder.mAction, Action.INFO, downloadId, true);
         } else {
             viewHolder.mMenu.setOnClickListener(getClickListener(update, false, viewHolder.mMenu));
-            setButtonAction(viewHolder.mAction, Action.DOWNLOAD, downloadId, !isBusy());
+            setButtonAction(viewHolder.mAction, Action.DOWNLOAD, downloadId, true);
         }
         String fileSize = Formatter.formatShortFileSize(mActivity, update.getFileSize());
         viewHolder.mBuildSize.setText(fileSize);
@@ -426,11 +427,6 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
                 clickListener.onClick(v);
             }
         });
-    }
-
-    private boolean isBusy() {
-        return mUpdaterController.hasActiveDownloads() || mUpdaterController.isVerifyingUpdate()
-                || mUpdaterController.isInstallingUpdate();
     }
 
     private AlertDialog.Builder getDeleteDialog(final String downloadId) {

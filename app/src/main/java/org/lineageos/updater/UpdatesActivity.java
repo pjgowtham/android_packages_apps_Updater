@@ -141,7 +141,7 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
                 if (UpdaterController.ACTION_UPDATE_STATUS.equals(intent.getAction())) {
                     String downloadId = intent.getStringExtra(UpdaterController.EXTRA_DOWNLOAD_ID);
                     handleDownloadStatusChange(downloadId);
-                    mAdapter.notifyItemChanged(downloadId);
+                    mAdapter.notifyDataSetChanged();
                 } else if (UpdaterController.ACTION_DOWNLOAD_PROGRESS.equals(intent.getAction()) ||
                         UpdaterController.ACTION_INSTALL_PROGRESS.equals(intent.getAction())) {
                     String downloadId = intent.getStringExtra(UpdaterController.EXTRA_DOWNLOAD_ID);
