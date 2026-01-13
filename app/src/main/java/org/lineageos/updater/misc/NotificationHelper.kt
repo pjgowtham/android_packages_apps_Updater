@@ -360,7 +360,7 @@ class NotificationHelper private constructor(context: Context) {
         addAction(
             Notification.Action.Builder(
                 null,
-                context.getString(R.string.action_cancel),
+                context.getString(android.R.string.cancel),
                 controlIntent(downloadId, UpdaterService.DOWNLOAD_CANCEL)
             )
                 .setSemanticAction(Notification.Action.SEMANTIC_ACTION_DELETE)
