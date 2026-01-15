@@ -15,7 +15,6 @@
  */
 package org.lineageos.updater.misc;
 
-import android.app.AlarmManager;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -385,26 +384,21 @@ public class Utils {
         return sm.isEncrypted(file);
     }
 
-    public static int getUpdateCheckSetting(Context context) {
-        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
-        return preferences.getInt(Constants.PREF_AUTO_UPDATES_CHECK_INTERVAL,
-                Constants.AUTO_UPDATES_CHECK_INTERVAL_WEEKLY);
-    }
-
     public static boolean isUpdateCheckEnabled(Context context) {
-        return getUpdateCheckSetting(context) != Constants.AUTO_UPDATES_CHECK_INTERVAL_NEVER;
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+        return preferences.getBoolean(Constants.PREF_PERIODIC_CHECK_ENABLED, true);
     }
 
     public static long getUpdateCheckInterval(Context context) {
-        switch (Utils.getUpdateCheckSetting(context)) {
-            case Constants.AUTO_UPDATES_CHECK_INTERVAL_DAILY:
-                return AlarmManager.INTERVAL_DAY;
-            case Constants.AUTO_UPDATES_CHECK_INTERVAL_WEEKLY:
-            default:
-                return AlarmManager.INTERVAL_DAY * 7;
-            case Constants.AUTO_UPDATES_CHECK_INTERVAL_MONTHLY:
-                return AlarmManager.INTERVAL_DAY * 30;
-        }
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+        String value = preferences.getString(Constants.PREF_PERIODIC_CHECK_INTERVAL, null);
+        Constants.CheckInterval interval = Constants.CheckInterval.Companion.fromValue(value);
+        return interval.getMilliseconds();
+    }
+
+    public static long getNextUpdateCheckTime(Context context) {
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+        return preferences.getLong(Constants.PREF_NEXT_UPDATE_CHECK, -1);
     }
 
     public static boolean isRecoveryUpdateExecPresent() {

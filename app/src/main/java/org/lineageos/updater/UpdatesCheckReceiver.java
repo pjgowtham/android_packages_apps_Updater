@@ -43,7 +43,7 @@ public class UpdatesCheckReceiver extends BroadcastReceiver {
 
     private static final String TAG = "UpdatesCheckReceiver";
 
-    private static final String DAILY_CHECK_ACTION = "daily_check_action";
+    private static final String PERIODIC_CHECK_ACTION = "periodic_check_action";
     private static final String ONESHOT_CHECK_ACTION = "oneshot_check_action";
 
     private static final String NEW_UPDATES_NOTIFICATION_CHANNEL =
@@ -144,7 +144,7 @@ public class UpdatesCheckReceiver extends BroadcastReceiver {
 
     private static PendingIntent getRepeatingUpdatesCheckIntent(Context context) {
         Intent intent = new Intent(context, UpdatesCheckReceiver.class);
-        intent.setAction(DAILY_CHECK_ACTION);
+        intent.setAction(PERIODIC_CHECK_ACTION);
         return PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_IMMUTABLE);
     }
 
@@ -158,20 +158,31 @@ public class UpdatesCheckReceiver extends BroadcastReceiver {
             return;
         }
 
+        long updateCheckInterval = Utils.getUpdateCheckInterval(context);
+        long nextCheckTime = System.currentTimeMillis() + updateCheckInterval;
+
         PendingIntent updateCheckIntent = getRepeatingUpdatesCheckIntent(context);
         AlarmManager alarmMgr = context.getSystemService(AlarmManager.class);
-        alarmMgr.setRepeating(AlarmManager.RTC, System.currentTimeMillis() +
-                Utils.getUpdateCheckInterval(context), Utils.getUpdateCheckInterval(context),
+        alarmMgr.setRepeating(AlarmManager.RTC, nextCheckTime, updateCheckInterval,
                 updateCheckIntent);
 
-        Date nextCheckDate = new Date(System.currentTimeMillis() +
-                Utils.getUpdateCheckInterval(context));
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+        preferences.edit()
+                .putLong(Constants.PREF_NEXT_UPDATE_CHECK, nextCheckTime)
+                .apply();
+
+        Date nextCheckDate = new Date(nextCheckTime);
         Log.d(TAG, "Setting automatic updates check: " + nextCheckDate);
     }
 
     public static void cancelRepeatingUpdatesCheck(Context context) {
         AlarmManager alarmMgr = context.getSystemService(AlarmManager.class);
         alarmMgr.cancel(getRepeatingUpdatesCheckIntent(context));
+
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+        preferences.edit()
+                .remove(Constants.PREF_NEXT_UPDATE_CHECK)
+                .apply();
     }
 
     private static PendingIntent getUpdatesCheckIntent(Context context) {

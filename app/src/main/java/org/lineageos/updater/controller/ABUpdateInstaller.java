@@ -141,6 +141,14 @@ class ABUpdateInstaller {
         mUpdaterController = updaterController;
         mContext = context.getApplicationContext();
         mUpdateEngine = new UpdateEngine();
+
+        PreferenceManager.getDefaultSharedPreferences(mContext)
+                .registerOnSharedPreferenceChangeListener((sharedPreferences, key) -> {
+                    if (Constants.PREF_AB_PERF_MODE.equals(key) && mBound) {
+                        boolean enable = sharedPreferences.getBoolean(key, false);
+                        mUpdateEngine.setPerformanceMode(enable);
+                    }
+                });
     }
 
     static synchronized ABUpdateInstaller getInstance(Context context,
@@ -261,6 +269,7 @@ class ABUpdateInstaller {
                 .putString(Constants.PREF_NEEDS_REBOOT_ID, id)
                 .remove(PREF_INSTALLING_AB_ID)
                 .apply();
+        mBound = false;
     }
 
     public void cancel() {
@@ -281,10 +290,6 @@ class ABUpdateInstaller {
                 .setStatus(UpdateStatus.INSTALLATION_CANCELLED);
         mUpdaterController.notifyUpdateChange(mDownloadId);
 
-    }
-
-    public void setPerformanceMode(boolean enable) {
-        mUpdateEngine.setPerformanceMode(enable);
     }
 
     public void suspend() {
