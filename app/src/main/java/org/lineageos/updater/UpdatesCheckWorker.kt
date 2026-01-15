@@ -24,6 +24,7 @@ import androidx.work.WorkerParameters
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.lineageos.updater.download.DownloadClient
 import org.lineageos.updater.misc.Constants
+import org.lineageos.updater.misc.DeviceInfoUtils
 import org.lineageos.updater.misc.NotificationHelper
 import org.lineageos.updater.misc.Utils
 import java.io.File
@@ -139,9 +140,6 @@ class UpdatesCheckWorker(
         private const val KEY_IMMEDIATE_CHECK = "immediate_check"
         private const val RETRY_DELAY_HOURS = 2L
 
-
-        private const val PROP_UPDATER_URI = "lineage.updater.uri"
-
         const val WORK_NAME = "updates_check"
         const val WORK_NAME_IMMEDIATE = "updates_check_immediate"
 
@@ -165,15 +163,11 @@ class UpdatesCheckWorker(
         }
 
         private fun getUpdateCheckUrl(context: Context): String {
-            val incrementalVersion = SystemProperties.get(Constants.PROP_BUILD_VERSION_INCREMENTAL)
-            val device = SystemProperties.get(
-                Constants.PROP_NEXT_DEVICE,
-                SystemProperties.get(Constants.PROP_DEVICE)
-            )
-            val type =
-                SystemProperties.get(Constants.PROP_RELEASE_TYPE).lowercase(java.util.Locale.ROOT)
+            val incrementalVersion = DeviceInfoUtils.buildVersionIncremental
+            val device = DeviceInfoUtils.device
+            val type = DeviceInfoUtils.releaseType.lowercase(java.util.Locale.ROOT)
 
-            var serverUrl = SystemProperties.get(PROP_UPDATER_URI)
+            var serverUrl = DeviceInfoUtils.updaterUri
             if (serverUrl.trim().isEmpty()) {
                 serverUrl = context.getString(R.string.updater_server_url)
             }

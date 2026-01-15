@@ -22,7 +22,6 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
-import android.os.SystemProperties;
 import android.os.storage.StorageManager;
 import android.util.Log;
 
@@ -63,11 +62,6 @@ public class Utils {
         return new File(context.getCacheDir(), "updates.json");
     }
 
-    public static String getDevice() {
-        return SystemProperties.get(Constants.PROP_NEXT_DEVICE,
-                SystemProperties.get(Constants.PROP_DEVICE));
-    }
-
     // This should really return an UpdateBaseInfo object, but currently this only
     // used to initialize UpdateInfo objects
     private static UpdateInfo parseJsonUpdate(JSONObject object) throws JSONException {
@@ -83,16 +77,16 @@ public class Utils {
     }
 
     public static boolean isCompatible(UpdateBaseInfo update) {
-        if (update.getVersion().compareTo(SystemProperties.get(Constants.PROP_BUILD_VERSION)) < 0) {
+        if (update.getVersion().compareTo(DeviceInfoUtils.getBuildVersion()) < 0) {
             Log.d(TAG, update.getName() + " is older than current Android version");
             return false;
         }
-        if (!SystemProperties.getBoolean(Constants.PROP_UPDATER_ALLOW_DOWNGRADING, false) &&
-                update.getTimestamp() <= SystemProperties.getLong(Constants.PROP_BUILD_DATE, 0)) {
+        if (!DeviceInfoUtils.isDowngradingAllowed() &&
+                update.getTimestamp() <= DeviceInfoUtils.getBuildDateTimestamp()) {
             Log.d(TAG, update.getName() + " is older than/equal to the current build");
             return false;
         }
-        if (!update.getType().equalsIgnoreCase(SystemProperties.get(Constants.PROP_RELEASE_TYPE))) {
+        if (!update.getType().equalsIgnoreCase(DeviceInfoUtils.getReleaseType())) {
             Log.d(TAG, update.getName() + " has type " + update.getType());
             return false;
         }
@@ -116,14 +110,13 @@ public class Utils {
     }
 
     public static boolean canInstall(UpdateBaseInfo update) {
-        boolean allowMajorUpgrades = SystemProperties.getBoolean(
-                Constants.PROP_ALLOW_MAJOR_UPGRADES, false);
+        boolean allowMajorUpgrades = DeviceInfoUtils.isMajorUpdateAllowed();
 
-        return (SystemProperties.getBoolean(Constants.PROP_UPDATER_ALLOW_DOWNGRADING, false) ||
-                update.getTimestamp() > SystemProperties.getLong(Constants.PROP_BUILD_DATE, 0)) &&
+        return (DeviceInfoUtils.isDowngradingAllowed() ||
+                update.getTimestamp() > DeviceInfoUtils.getBuildDateTimestamp()) &&
                 compareVersions(
                         update.getVersion(),
-                        SystemProperties.get(Constants.PROP_BUILD_VERSION),
+                        DeviceInfoUtils.getBuildVersion(),
                         allowMajorUpgrades);
     }
 
@@ -160,11 +153,11 @@ public class Utils {
     }
 
     public static String getUpgradeBlockedURL(Context context) {
-        return context.getString(R.string.blocked_update_info_url, getDevice());
+        return context.getString(R.string.blocked_update_info_url, DeviceInfoUtils.getDevice());
     }
 
     public static String getChangelogURL(Context context) {
-        return context.getString(R.string.menu_changelog_url, getDevice());
+        return context.getString(R.string.menu_changelog_url, DeviceInfoUtils.getDevice());
     }
 
     public static void triggerUpdate(Context context, String downloadId) {
@@ -233,7 +226,7 @@ public class Utils {
 
         removeUncryptFiles(downloadPath);
 
-        long buildTimestamp = SystemProperties.getLong(Constants.PROP_BUILD_DATE, 0);
+        long buildTimestamp = DeviceInfoUtils.getBuildDateTimestamp();
         long prevTimestamp = preferences.getLong(Constants.PREF_INSTALL_OLD_TIMESTAMP, 0);
         String lastUpdatePath = preferences.getString(Constants.PREF_INSTALL_PACKAGE_PATH, null);
         boolean reinstalling = preferences.getBoolean(Constants.PREF_INSTALL_AGAIN, false);
@@ -302,10 +295,6 @@ public class Utils {
             }
         }
         throw new IllegalStateException();
-    }
-
-    public static boolean isABDevice() {
-        return SystemProperties.getBoolean(Constants.PROP_AB_DEVICE, false);
     }
 
     public static boolean isABUpdate(ZipFile zipFile) {

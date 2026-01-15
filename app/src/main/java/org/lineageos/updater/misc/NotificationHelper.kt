@@ -217,7 +217,7 @@ class NotificationHelper private constructor(context: Context) {
             prefs.getBoolean(Constants.PREF_INSTALL_NOTIFIED, false)
         ) return
 
-        val currentTimestamp = BuildInfoUtils.getBuildDateTimestamp()
+        val currentTimestamp = DeviceInfoUtils.buildDateTimestamp
         val lastTimestamp = prefs.getLong(Constants.PREF_INSTALL_OLD_TIMESTAMP, -1)
 
         if (currentTimestamp == lastTimestamp) {
@@ -227,7 +227,7 @@ class NotificationHelper private constructor(context: Context) {
             )
             val buildInfo = context.getString(
                 R.string.list_build_version_date,
-                BuildInfoUtils.getBuildVersion(), buildDate
+                DeviceInfoUtils.buildVersion, buildDate
             )
             prefs.edit { putBoolean(Constants.PREF_INSTALL_NOTIFIED, true) }
             notifyUpdateFailed(buildInfo)

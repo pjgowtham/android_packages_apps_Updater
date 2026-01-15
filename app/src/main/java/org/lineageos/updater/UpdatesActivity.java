@@ -31,7 +31,6 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.os.SystemProperties;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
@@ -62,7 +61,7 @@ import com.google.android.material.snackbar.Snackbar;
 import org.json.JSONException;
 import org.lineageos.updater.controller.UpdaterController;
 import org.lineageos.updater.controller.UpdaterService;
-import org.lineageos.updater.misc.BuildInfoUtils;
+import org.lineageos.updater.misc.DeviceInfoUtils;
 import org.lineageos.updater.misc.Constants;
 import org.lineageos.updater.misc.StringGenerator;
 import org.lineageos.updater.misc.Utils;
@@ -190,7 +189,7 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
 
         TextView headerTitle = findViewById(R.id.header_title);
         headerTitle.setText(getString(R.string.header_title_text,
-                BuildInfoUtils.getBuildVersion()));
+                DeviceInfoUtils.getBuildVersion()));
 
         prefs = PreferenceManager.getDefaultSharedPreferences(this);
         mPrefListener = (sharedPreferences, key) -> {
@@ -206,7 +205,11 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
 
         TextView headerBuildDate = findViewById(R.id.header_build_date);
         headerBuildDate.setText(StringGenerator.getDateLocalizedUTC(this,
-                DateFormat.LONG, BuildInfoUtils.getBuildDateTimestamp()));
+                DateFormat.LONG, DeviceInfoUtils.getBuildDateTimestamp()));
+
+        TextView headerSecurityPatch = findViewById(R.id.header_security_patch_level);
+        headerSecurityPatch.setText(getString(R.string.header_android_security_update,
+                DeviceInfoUtils.getSecurityPatch(StringGenerator.getCurrentLocale(this))));
 
         if (!mIsTV) {
             // Switch between header title and appbar title minimizing overlaps
@@ -469,7 +472,7 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
         SwitchCompat abPerfMode = view.findViewById(R.id.preferences_ab_perf_mode);
         SwitchCompat updateRecovery = view.findViewById(R.id.preferences_update_recovery);
 
-        if (!Utils.isABDevice()) {
+        if (!DeviceInfoUtils.isABDevice()) {
             abPerfMode.setVisibility(View.GONE);
         }
 
@@ -482,7 +485,7 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
             updateRecovery.setVisibility(View.VISIBLE);
             // Obtain and apply the user preference from SetupWizard.
             updateRecovery.setChecked(
-                    SystemProperties.getBoolean(Constants.UPDATE_RECOVERY_PROPERTY, false));
+                    DeviceInfoUtils.isRecoveryUpdateEnabled());
         }
 
         new AlertDialog.Builder(this)
@@ -500,14 +503,13 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
 
                     UpdatesCheckWorker.updateSchedule(this);
 
-                    if (Utils.isABDevice()) {
+                    if (DeviceInfoUtils.isABDevice()) {
                         boolean enableABPerfMode = abPerfMode.isChecked();
                         mUpdaterService.getUpdaterController().setPerformanceMode(enableABPerfMode);
                     }
                     if (Utils.isRecoveryUpdateExecPresent()) {
                         boolean enableRecoveryUpdate = updateRecovery.isChecked();
-                        SystemProperties.set(Constants.UPDATE_RECOVERY_PROPERTY,
-                                String.valueOf(enableRecoveryUpdate));
+                        DeviceInfoUtils.setRecoveryUpdateEnabled(enableRecoveryUpdate);
                     }
                 })
                 .show();
