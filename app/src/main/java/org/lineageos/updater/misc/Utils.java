@@ -32,7 +32,9 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.lineageos.updater.R;
 import org.lineageos.updater.controller.UpdaterService;
+import org.lineageos.updater.controller.UpdaterService;
 import org.lineageos.updater.database.*;
+import org.lineageos.updater.model.Preferences;
 import org.lineageos.updater.model.Update;
 import org.lineageos.updater.model.UpdateBaseInfo;
 import org.lineageos.updater.model.UpdateInfo;
@@ -230,7 +232,7 @@ public class Utils {
         long prevTimestamp = preferences.getLong(Constants.PREF_INSTALL_OLD_TIMESTAMP, 0);
         String lastUpdatePath = preferences.getString(Constants.PREF_INSTALL_PACKAGE_PATH, null);
         boolean reinstalling = preferences.getBoolean(Constants.PREF_INSTALL_AGAIN, false);
-        boolean deleteUpdates = preferences.getBoolean(Constants.PREF_AUTO_DELETE_UPDATES, false);
+        boolean deleteUpdates = preferences.getBoolean(Preferences.AUTO_DELETE_UPDATES, false);
         if ((buildTimestamp != prevTimestamp || reinstalling) && deleteUpdates &&
                 lastUpdatePath != null) {
             File lastUpdate = new File(lastUpdatePath);

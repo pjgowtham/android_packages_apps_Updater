@@ -27,6 +27,7 @@ import androidx.preference.PreferenceManager;
 
 import org.lineageos.updater.misc.Constants;
 import org.lineageos.updater.misc.Utils;
+import org.lineageos.updater.model.Preferences;
 import org.lineageos.updater.model.Update;
 import org.lineageos.updater.model.UpdateStatus;
 
@@ -58,6 +59,8 @@ class ABUpdateInstaller {
 
     private boolean mFinalizing;
     private int mProgress;
+
+    private final SharedPreferences.OnSharedPreferenceChangeListener mSettingsListener;
 
     private final UpdateEngineCallback mUpdateEngineCallback = new UpdateEngineCallback() {
 
@@ -141,6 +144,14 @@ class ABUpdateInstaller {
         mUpdaterController = updaterController;
         mContext = context.getApplicationContext();
         mUpdateEngine = new UpdateEngine();
+        mSettingsListener = (sharedPreferences, key) -> {
+            if (Preferences.AB_PERF_MODE.equals(key)) {
+                boolean enable = sharedPreferences.getBoolean(key, false);
+                mUpdateEngine.setPerformanceMode(enable);
+            }
+        };
+        PreferenceManager.getDefaultSharedPreferences(mContext)
+                .registerOnSharedPreferenceChangeListener(mSettingsListener);
     }
 
     static synchronized ABUpdateInstaller getInstance(Context context,
@@ -209,7 +220,7 @@ class ABUpdateInstaller {
         }
 
         boolean enableABPerfMode = PreferenceManager.getDefaultSharedPreferences(mContext)
-                .getBoolean(Constants.PREF_AB_PERF_MODE, false);
+                .getBoolean(Preferences.AB_PERF_MODE, false);
         mUpdateEngine.setPerformanceMode(enableABPerfMode);
 
         String zipFileUri = "file://" + file.getAbsolutePath();
@@ -281,10 +292,6 @@ class ABUpdateInstaller {
                 .setStatus(UpdateStatus.INSTALLATION_CANCELLED);
         mUpdaterController.notifyUpdateChange(mDownloadId);
 
-    }
-
-    public void setPerformanceMode(boolean enable) {
-        mUpdateEngine.setPerformanceMode(enable);
     }
 
     public void suspend() {

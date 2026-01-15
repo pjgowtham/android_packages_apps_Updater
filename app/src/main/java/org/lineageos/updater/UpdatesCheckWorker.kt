@@ -27,6 +27,7 @@ import org.lineageos.updater.misc.Constants
 import org.lineageos.updater.misc.DeviceInfoUtils
 import org.lineageos.updater.misc.NotificationHelper
 import org.lineageos.updater.misc.Utils
+import org.lineageos.updater.model.Preferences
 import java.io.File
 import java.io.IOException
 import java.util.UUID
@@ -150,17 +151,7 @@ class UpdatesCheckWorker(
         /**
          * Update check intervals.
          */
-        enum class CheckInterval(val value: Int, val milliseconds: Long) {
-            NEVER(Constants.AUTO_UPDATES_CHECK_INTERVAL_NEVER, 0),
-            DAILY(Constants.AUTO_UPDATES_CHECK_INTERVAL_DAILY, TimeUnit.DAYS.toMillis(1)),
-            WEEKLY(Constants.AUTO_UPDATES_CHECK_INTERVAL_WEEKLY, TimeUnit.DAYS.toMillis(7)),
-            MONTHLY(Constants.AUTO_UPDATES_CHECK_INTERVAL_MONTHLY, TimeUnit.DAYS.toMillis(30));
 
-            companion object {
-                fun fromValue(value: Int): CheckInterval =
-                    entries.find { it.value == value } ?: WEEKLY
-            }
-        }
 
         private fun getUpdateCheckUrl(context: Context): String {
             val incrementalVersion = DeviceInfoUtils.buildVersionIncremental
@@ -177,21 +168,18 @@ class UpdatesCheckWorker(
                 .replace("{incr}", incrementalVersion)
         }
 
-        private fun getCheckInterval(context: Context): CheckInterval {
+        private fun getCheckInterval(context: Context): Long {
             val prefs = PreferenceManager.getDefaultSharedPreferences(context)
-            val value = prefs.getInt(
-                Constants.PREF_AUTO_UPDATES_CHECK_INTERVAL,
-                Constants.AUTO_UPDATES_CHECK_INTERVAL_WEEKLY
-            )
-            return CheckInterval.fromValue(value)
+            val defValue =
+                context.resources.getInteger(R.integer.def_periodic_check_interval).toString()
+            val value = prefs.getString(Preferences.CheckInterval.KEY_INTERVAL, defValue)
+            return Preferences.CheckInterval.fromValue(value).milliseconds
         }
 
-        private fun isPeriodicCheckEnabled(context: Context): Boolean =
-            getCheckInterval(context) != CheckInterval.NEVER
-
-        @JvmStatic
-        fun getUpdateCheckSetting(context: Context): Int =
-            getCheckInterval(context).value
+        private fun isPeriodicCheckEnabled(context: Context): Boolean {
+            val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+            return prefs.getBoolean(Preferences.CheckInterval.KEY_ENABLED, true)
+        }
 
         @JvmStatic
         fun updateSchedule(context: Context) {
@@ -210,7 +198,7 @@ class UpdatesCheckWorker(
             val interval = getCheckInterval(context)
             val workRequest = PeriodicWorkRequest.Builder(
                 UpdatesCheckWorker::class.java,
-                interval.milliseconds,
+                interval,
                 TimeUnit.MILLISECONDS
             )
                 .setConstraints(CONSTRAINTS)

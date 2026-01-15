@@ -53,6 +53,7 @@ import org.lineageos.updater.controller.UpdaterService;
 import org.lineageos.updater.misc.Constants;
 import org.lineageos.updater.misc.StringGenerator;
 import org.lineageos.updater.misc.Utils;
+import org.lineageos.updater.model.Preferences;
 import org.lineageos.updater.model.UpdateInfo;
 import org.lineageos.updater.model.UpdateStatus;
 
@@ -351,7 +352,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
 
     private void resumeDownloadWithWarning(final String downloadId) {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(mActivity);
-        boolean warn = preferences.getBoolean(Constants.PREF_METERED_NETWORK_WARNING, true);
+        boolean warn = preferences.getBoolean(Preferences.METERED_NETWORK_WARNING, true);
         if (!(Utils.isNetworkMetered(mActivity) && warn)) {
             mUpdaterController.resumeDownload(downloadId);
             return;
@@ -370,7 +371,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
 
     private void startDownloadWithWarning(final String downloadId) {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(mActivity);
-        boolean warn = preferences.getBoolean(Constants.PREF_METERED_NETWORK_WARNING, true);
+        boolean warn = preferences.getBoolean(Preferences.METERED_NETWORK_WARNING, true);
         if (!(Utils.isNetworkMetered(mActivity) && warn)) {
             mUpdaterController.startDownload(downloadId);
             return;

@@ -26,7 +26,6 @@ import org.lineageos.updater.database.UpdateDao;
 import org.lineageos.updater.database.UpdateEntity;
 import org.lineageos.updater.database.UpdatesDatabase;
 import org.lineageos.updater.download.DownloadClient;
-import org.lineageos.updater.misc.DeviceInfoUtils;
 import org.lineageos.updater.misc.Utils;
 import org.lineageos.updater.model.Update;
 import org.lineageos.updater.model.UpdateInfo;
@@ -579,12 +578,7 @@ public class UpdaterController {
         return ABUpdateInstaller.isWaitingForReboot(mContext, downloadId);
     }
 
-    public void setPerformanceMode(boolean enable) {
-        if (!DeviceInfoUtils.isABDevice()) {
-            return;
-        }
-        ABUpdateInstaller.getInstance(mContext, this).setPerformanceMode(enable);
-    }
+
 
     private void pauseActiveDownloads() {
         for (DownloadEntry entry : mDownloads.values()) {
