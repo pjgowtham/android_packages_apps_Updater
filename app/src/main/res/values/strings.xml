@@ -1,26 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-     Copyright (C) 2017-2026 The LineageOS Project
-
-     Licensed under the Apache License, Version 2.0 (the "License");
-     you may not use this file except in compliance with the License.
-     You may obtain a copy of the License at
-
-          http://www.apache.org/licenses/LICENSE-2.0
-
-     Unless required by applicable law or agreed to in writing, software
-     distributed under the License is distributed on an "AS IS" BASIS,
-     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-     See the License for the specific language governing permissions and
-     limitations under the License.
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
 -->
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name">Updater</string>
-    <string name="display_name">Updater</string>
+
+    <!-- This is matched with system_update_settings_list_item_title
+     from the Settings app. -->
+    <string name="display_name">System updates</string>
 
     <!-- Directory where the update files will be downloaded and stored.
          WARNING: The application can and will delete any unknown file. -->
     <string name="download_path" translatable="false">/data/lineageos_updates/</string>
+
+    <!-- Header -->
+    <string name="show_changelog">Recent changes</string>
+    <string name="report_issues">Report issues</string>
+
+    <!-- Filters -->
+    <string name="all">All</string>
+    <string name="latest">Latest</string>
+    <string name="downloaded">Downloaded</string>
 
     <!-- Directory where the downloads will be exported to.
          The path is relative to the root of the external storage.-->
@@ -91,6 +92,7 @@
     <string name="menu_export_update">Export update</string>
     <string name="menu_show_changelog">Show changelog</string>
     <string name="menu_changelog_url" translatable="false">https://download.lineageos.org/<xliff:g id="device_name">%1$s</xliff:g>/changes</string>
+    <string name="report_issue_url" translatable="false">https://gitlab.com/LineageOS/issues/android/-/issues</string>
     <string name="menu_metered_network_warning_summary">Warn before downloading over mobile data</string>
 
     <string name="menu_ab_perf_mode">Prioritize update process</string>
@@ -108,8 +110,8 @@
     <string name="snack_update_not_installable">This update can\'t be installed on top of the current build.</string>
 
     <string name="header_android_security_update">Android security update: <xliff:g id="patch" example="January 1, 1970">%1$s</xliff:g></string>
-    <string name="header_title_text">LineageOS\n%1$s</string>
     <string name="header_android_version">Android <xliff:g id="version" example="7.1.2">%1$s</xliff:g></string>
+    <string name="header_version_combined">Android <xliff:g id="android_ver">%1$s</xliff:g> | LineageOS <xliff:g id="lineage_ver">%2$s</xliff:g></string>
     <string name="header_last_updates_check">Last checked: <xliff:g id="date" example="1 January 1970">%1$s</xliff:g> (<xliff:g id="time" example="01:23">%2$s</xliff:g>)</string>
 
     <string name="list_build_version">LineageOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
