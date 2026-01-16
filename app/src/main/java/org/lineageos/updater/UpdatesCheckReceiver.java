@@ -16,8 +16,6 @@
 package org.lineageos.updater;
 
 import android.app.AlarmManager;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -26,12 +24,12 @@ import android.content.SharedPreferences;
 import android.os.SystemClock;
 import android.util.Log;
 
-import androidx.core.app.NotificationCompat;
 import androidx.preference.PreferenceManager;
 
 import org.json.JSONException;
 import org.lineageos.updater.download.DownloadClient;
 import org.lineageos.updater.misc.Constants;
+import org.lineageos.updater.misc.NotificationHelper;
 import org.lineageos.updater.misc.Utils;
 
 import java.io.File;
@@ -45,9 +43,6 @@ public class UpdatesCheckReceiver extends BroadcastReceiver {
 
     private static final String DAILY_CHECK_ACTION = "daily_check_action";
     private static final String ONESHOT_CHECK_ACTION = "oneshot_check_action";
-
-    private static final String NEW_UPDATES_NOTIFICATION_CHANNEL =
-            "new_updates_notification_channel";
 
     @Override
     public void onReceive(final Context context, Intent intent) {
@@ -123,23 +118,7 @@ public class UpdatesCheckReceiver extends BroadcastReceiver {
     }
 
     private static void showNotification(Context context) {
-        NotificationManager notificationManager = context.getSystemService(
-                NotificationManager.class);
-        NotificationChannel notificationChannel = new NotificationChannel(
-                NEW_UPDATES_NOTIFICATION_CHANNEL,
-                context.getString(R.string.new_updates_channel_title),
-                NotificationManager.IMPORTANCE_LOW);
-        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context,
-                NEW_UPDATES_NOTIFICATION_CHANNEL);
-        notificationBuilder.setSmallIcon(R.drawable.ic_system_update);
-        Intent notificationIntent = new Intent(context, UpdatesActivity.class);
-        PendingIntent intent = PendingIntent.getActivity(context, 0, notificationIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        notificationBuilder.setContentIntent(intent);
-        notificationBuilder.setContentTitle(context.getString(R.string.new_updates_found_title));
-        notificationBuilder.setAutoCancel(true);
-        notificationManager.createNotificationChannel(notificationChannel);
-        notificationManager.notify(0, notificationBuilder.build());
+        NotificationHelper.getInstance(context).notifyNewUpdates();
     }
 
     private static PendingIntent getRepeatingUpdatesCheckIntent(Context context) {

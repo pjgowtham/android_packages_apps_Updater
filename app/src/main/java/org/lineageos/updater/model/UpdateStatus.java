@@ -29,7 +29,8 @@ public enum UpdateStatus {
     INSTALLED,
     INSTALLATION_FAILED,
     INSTALLATION_CANCELLED,
-    INSTALLATION_SUSPENDED;
+    INSTALLATION_SUSPENDED,
+    FINALIZING;
 
     public static final class Persistent {
         public static final int UNKNOWN = 0;

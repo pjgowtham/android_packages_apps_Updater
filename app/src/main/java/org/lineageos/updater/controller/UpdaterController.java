@@ -23,8 +23,6 @@ import android.os.PowerManager;
 import android.os.SystemClock;
 import android.util.Log;
 
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-
 import org.lineageos.updater.UpdatesDbHelper;
 import org.lineageos.updater.download.DownloadClient;
 import org.lineageos.updater.misc.Utils;
@@ -56,7 +54,6 @@ public class UpdaterController {
     private static final int MAX_REPORT_INTERVAL_MS = 1000;
 
     private final Context mContext;
-    private final LocalBroadcastManager mBroadcastManager;
     private final UpdatesDbHelper mUpdatesDbHelper;
 
     private final PowerManager.WakeLock mWakeLock;
@@ -74,7 +71,6 @@ public class UpdaterController {
     }
 
     private UpdaterController(Context context) {
-        mBroadcastManager = LocalBroadcastManager.getInstance(context);
         mUpdatesDbHelper = new UpdatesDbHelper(context);
         mDownloadRoot = Utils.getDownloadPath(context);
         PowerManager powerManager = context.getSystemService(PowerManager.class);
@@ -103,28 +99,32 @@ public class UpdaterController {
         Intent intent = new Intent();
         intent.setAction(ACTION_UPDATE_STATUS);
         intent.putExtra(EXTRA_DOWNLOAD_ID, downloadId);
-        mBroadcastManager.sendBroadcast(intent);
+        intent.setPackage(mContext.getPackageName());
+        mContext.sendBroadcast(intent);
     }
 
     void notifyUpdateDelete(String downloadId) {
         Intent intent = new Intent();
         intent.setAction(ACTION_UPDATE_REMOVED);
         intent.putExtra(EXTRA_DOWNLOAD_ID, downloadId);
-        mBroadcastManager.sendBroadcast(intent);
+        intent.setPackage(mContext.getPackageName());
+        mContext.sendBroadcast(intent);
     }
 
     void notifyDownloadProgress(String downloadId) {
         Intent intent = new Intent();
         intent.setAction(ACTION_DOWNLOAD_PROGRESS);
         intent.putExtra(EXTRA_DOWNLOAD_ID, downloadId);
-        mBroadcastManager.sendBroadcast(intent);
+        intent.setPackage(mContext.getPackageName());
+        mContext.sendBroadcast(intent);
     }
 
     void notifyInstallProgress(String downloadId) {
         Intent intent = new Intent();
         intent.setAction(ACTION_INSTALL_PROGRESS);
         intent.putExtra(EXTRA_DOWNLOAD_ID, downloadId);
-        mBroadcastManager.sendBroadcast(intent);
+        intent.setPackage(mContext.getPackageName());
+        mContext.sendBroadcast(intent);
     }
 
     private void tryReleaseWakelock() {
@@ -247,28 +247,30 @@ public class UpdaterController {
         };
     }
 
-    @SuppressLint("SetWorldReadable")
     private void verifyUpdateAsync(final String downloadId) {
         mVerifyingUpdates.add(downloadId);
         new Thread(() -> {
-            DownloadEntry entry = mDownloads.get(downloadId);
-            if (entry != null) {
-                Update update = entry.mUpdate;
-                File file = update.getFile();
-                if (file.exists() && verifyPackage(file)) {
-                    //noinspection ResultOfMethodCallIgnored
-                    file.setReadable(true, false);
-                    update.setPersistentStatus(UpdateStatus.Persistent.VERIFIED);
-                    mUpdatesDbHelper.changeUpdateStatus(update);
-                    update.setStatus(UpdateStatus.VERIFIED);
-                } else {
-                    update.setPersistentStatus(UpdateStatus.Persistent.UNKNOWN);
-                    mUpdatesDbHelper.removeUpdate(downloadId);
-                    update.setProgress(0);
-                    update.setStatus(UpdateStatus.VERIFICATION_FAILED);
+            try {
+                DownloadEntry entry = mDownloads.get(downloadId);
+                if (entry != null) {
+                    Update update = entry.mUpdate;
+                    File file = update.getFile();
+                    if (file.exists() && verifyPackage(file)) {
+                        /* noinspection ResultOfMethodCallIgnored */
+                        file.setReadable(true, false);
+                        update.setPersistentStatus(UpdateStatus.Persistent.VERIFIED);
+                        mUpdatesDbHelper.changeUpdateStatus(update);
+                        update.setStatus(UpdateStatus.VERIFIED);
+                    } else {
+                        update.setPersistentStatus(UpdateStatus.Persistent.UNKNOWN);
+                        mUpdatesDbHelper.removeUpdate(downloadId);
+                        update.setProgress(0);
+                        update.setStatus(UpdateStatus.VERIFICATION_FAILED);
+                    }
+                    notifyUpdateChange(downloadId);
                 }
+            } finally {
                 mVerifyingUpdates.remove(downloadId);
-                notifyUpdateChange(downloadId);
             }
         }).start();
     }
@@ -456,6 +458,34 @@ public class UpdaterController {
             entry.mUpdate.setEta(0);
             entry.mUpdate.setSpeed(0);
             notifyUpdateChange(downloadId);
+        }
+    }
+
+    public void cancelDownload(String downloadId) {
+        Log.d(TAG, "Cancelling " + downloadId);
+        if (!mDownloads.containsKey(downloadId)) {
+            return;
+        }
+        DownloadEntry entry = mDownloads.get(downloadId);
+        if (entry != null) {
+            if (entry.mDownloadClient != null) {
+                entry.mDownloadClient.cancel();
+                removeDownloadClient(entry);
+            }
+            Update update = entry.mUpdate;
+            update.setStatus(UpdateStatus.DELETED);
+            update.setProgress(0);
+            update.setPersistentStatus(UpdateStatus.Persistent.UNKNOWN);
+            deleteUpdateAsync(update);
+
+            final boolean isLocalUpdate = Update.LOCAL_ID.equals(downloadId);
+            if (!isLocalUpdate && !update.getAvailableOnline()) {
+                Log.d(TAG, "Download no longer available online, removing");
+                mDownloads.remove(downloadId);
+                notifyUpdateDelete(downloadId);
+            } else {
+                notifyUpdateChange(downloadId);
+            }
         }
     }
 

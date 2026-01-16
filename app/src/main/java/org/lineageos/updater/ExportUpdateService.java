@@ -15,8 +15,6 @@
  */
 package org.lineageos.updater;
 
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
 import android.app.Service;
 import android.content.ContentResolver;
 import android.content.Intent;
@@ -27,27 +25,20 @@ import android.os.SystemClock;
 import android.util.Log;
 import android.widget.Toast;
 
-import androidx.core.app.NotificationCompat;
-
 import org.lineageos.updater.misc.FileUtils;
+import org.lineageos.updater.misc.NotificationHelper;
 
 import java.io.File;
 import java.io.IOException;
-import java.text.NumberFormat;
 
 public class ExportUpdateService extends Service {
 
     private static final String TAG = "ExportUpdateService";
 
-    private static final int NOTIFICATION_ID = 16;
-
     public static final String ACTION_START_EXPORTING = "start_exporting";
 
     public static final String EXTRA_SOURCE_FILE = "source_file";
     public static final String EXTRA_DEST_URI = "dest_uri";
-
-    private static final String EXPORT_NOTIFICATION_CHANNEL =
-            "export_notification_channel";
 
     private volatile boolean mIsExporting = false;
 
@@ -124,21 +115,14 @@ public class ExportUpdateService extends Service {
 
     private void startExporting(File source, Uri destination) {
         final String fileName = FileUtils.queryName(getContentResolver(), destination);
-        NotificationManager notificationManager = getSystemService(NotificationManager.class);
-        NotificationChannel notificationChannel = new NotificationChannel(
-                EXPORT_NOTIFICATION_CHANNEL,
-                getString(R.string.export_channel_title),
-                NotificationManager.IMPORTANCE_LOW);
-        notificationManager.createNotificationChannel(notificationChannel);
+        NotificationHelper notificationHelper = NotificationHelper.getInstance(this);
 
-        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this,
-                EXPORT_NOTIFICATION_CHANNEL);
-        NotificationCompat.BigTextStyle notificationStyle = new NotificationCompat.BigTextStyle();
-        notificationBuilder.setContentTitle(getString(R.string.dialog_export_title));
-        notificationStyle.setBigContentTitle(getString(R.string.dialog_export_title));
-        notificationStyle.bigText(fileName);
-        notificationBuilder.setStyle(notificationStyle);
-        notificationBuilder.setSmallIcon(R.drawable.ic_system_update);
+        if (fileName == null) {
+            Log.e(TAG, "Failed to resolve file name from URI: " + destination);
+            notificationHelper.notifyExportFinished(null);
+            stopSelf();
+            return;
+        }
 
         FileUtils.ProgressCallBack progressCallBack = new FileUtils.ProgressCallBack() {
             private long mLastUpdate = -1;
@@ -147,41 +131,23 @@ public class ExportUpdateService extends Service {
             public void update(int progress) {
                 long now = SystemClock.elapsedRealtime();
                 if (mLastUpdate < 0 || now - mLastUpdate > 500) {
-                    String percent = NumberFormat.getPercentInstance().format(progress / 100.f);
-                    notificationStyle.setSummaryText(percent);
-                    notificationBuilder.setProgress(100, progress, false);
-                    notificationManager.notify(NOTIFICATION_ID,
-                            notificationBuilder.build());
+                    notificationHelper.notifyExportProgress(progress, fileName);
                     mLastUpdate = now;
                 }
             }
         };
 
-        startForeground(NOTIFICATION_ID, notificationBuilder.build(),
+        startForeground(NotificationHelper.NOTIFICATION_ID_EXPORT,
+                notificationHelper.buildExportStart(fileName),
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
-        notificationManager.notify(NOTIFICATION_ID, notificationBuilder.build());
 
         Runnable runnableComplete = () -> {
-            notificationStyle.setSummaryText(null);
-            notificationStyle.setBigContentTitle(
-                    getString(R.string.notification_export_success));
-            notificationBuilder.setContentTitle(
-                    getString(R.string.notification_export_success));
-            notificationBuilder.setProgress(0, 0, false);
-            notificationBuilder.setContentText(fileName);
-            notificationManager.notify(NOTIFICATION_ID, notificationBuilder.build());
+            notificationHelper.notifyExportFinished(fileName);
             stopForeground(STOP_FOREGROUND_DETACH);
         };
 
         Runnable runnableFailed = () -> {
-            notificationStyle.setSummaryText(null);
-            notificationStyle.setBigContentTitle(
-                    getString(R.string.notification_export_fail));
-            notificationBuilder.setContentTitle(
-                    getString(R.string.notification_export_fail));
-            notificationBuilder.setProgress(0, 0, false);
-            notificationBuilder.setContentText(null);
-            notificationManager.notify(NOTIFICATION_ID, notificationBuilder.build());
+            notificationHelper.notifyExportFinished(null);
             stopForeground(STOP_FOREGROUND_DETACH);
         };
 
