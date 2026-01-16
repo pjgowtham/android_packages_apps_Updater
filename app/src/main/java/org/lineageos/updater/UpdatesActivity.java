@@ -15,6 +15,8 @@
  */
 package org.lineageos.updater;
 
+import com.android.settingslib.collapsingtoolbar.CollapsingToolbarBaseActivity;
+
 import android.app.Activity;
 import android.app.UiModeManager;
 import android.content.BroadcastReceiver;
@@ -25,35 +27,37 @@ import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
+
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import android.icu.text.DateFormat;
+import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
-import android.util.TypedValue;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.RelativeLayout;
+import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.widget.Toolbar;
-import androidx.core.view.WindowInsetsCompat;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.SimpleItemAnimator;
 
+import com.airbnb.lottie.LottieAnimationView;
 import com.google.android.material.appbar.AppBarLayout;
-import com.google.android.material.appbar.CollapsingToolbarLayout;
 import com.google.android.material.snackbar.Snackbar;
+import com.google.android.material.appbar.CollapsingToolbarLayout;
+import com.google.android.material.chip.ChipGroup;
 
 import org.json.JSONException;
 import org.lineageos.updater.controller.UpdaterController;
@@ -72,13 +76,32 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-public class UpdatesActivity extends UpdatesListActivity implements UpdateImporter.Callbacks {
+public class UpdatesActivity extends CollapsingToolbarBaseActivity implements UpdateImporter.Callbacks {
 
     private static final String TAG = "UpdatesActivity";
     private UpdaterService mUpdaterService;
     private BroadcastReceiver mBroadcastReceiver;
 
     private UpdatesListAdapter mAdapter;
+    private final ServiceConnection mConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName className,
+                                       IBinder service) {
+            UpdaterService.LocalBinder binder = (UpdaterService.LocalBinder) service;
+            mUpdaterService = binder.getService();
+            mAdapter.setUpdaterController(mUpdaterService.getUpdaterController());
+            getUpdatesList();
+            updateUi();
+            updateHeaderState();
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName componentName) {
+            mAdapter.setUpdaterController(null);
+            mUpdaterService = null;
+            mAdapter.notifyDataSetChanged();
+        }
+    };
     private boolean mIsTV;
 
     private UpdateInfo mToBeExported = null;
@@ -96,6 +119,14 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
 
     private UpdateImporter mUpdateImporter;
     private AlertDialog importDialog;
+    private SharedPreferences prefs;
+    private SharedPreferences.OnSharedPreferenceChangeListener mPrefListener;
+    private ChipGroup mChipGroup;
+
+    private LottieAnimationView mLottieAnimationView;
+    private boolean mIsOnline;
+    private ConnectivityManager.NetworkCallback mNetworkCallback;
+    private String mHeaderTitle;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -107,6 +138,23 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
         UiModeManager uiModeManager = getSystemService(UiModeManager.class);
         mIsTV = uiModeManager.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION;
 
+        setupRecyclerView();
+        setupBroadcastReceiver();
+        setupHeaderContent();
+        setupToolbar();
+        setupClickListeners();
+        setupPreferenceListener();
+
+        maybeShowWelcomeMessage();
+        updateHeaderState();
+    }
+
+    private void setupRecyclerView() {
+        mChipGroup = findViewById(R.id.filter_chip_group);
+        mChipGroup.check(R.id.filter_latest);
+        mChipGroup.setOnCheckedStateChangeListener((group, checkedIds) -> updateUi());
+
+        mLottieAnimationView = findViewById(R.id.lottie_check_animation);
         RecyclerView recyclerView = findViewById(R.id.recycler_view);
         mAdapter = new UpdatesListAdapter(this);
         recyclerView.setAdapter(mAdapter);
@@ -116,13 +164,15 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
         if (animator instanceof SimpleItemAnimator) {
             ((SimpleItemAnimator) animator).setSupportsChangeAnimations(false);
         }
+    }
 
+    private void setupBroadcastReceiver() {
         mBroadcastReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 if (UpdaterController.ACTION_UPDATE_STATUS.equals(intent.getAction())) {
                     String downloadId = intent.getStringExtra(UpdaterController.EXTRA_DOWNLOAD_ID);
-                    handleDownloadStatusChange(downloadId);
+                    updateUi();
                     mAdapter.notifyItemChanged(downloadId);
                 } else if (UpdaterController.ACTION_DOWNLOAD_PROGRESS.equals(intent.getAction()) ||
                         UpdaterController.ACTION_INSTALL_PROGRESS.equals(intent.getAction())) {
@@ -134,89 +184,123 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
                     List<UpdateInfo> sortedUpdates =
                             mUpdaterService.getUpdaterController().getUpdates();
                     if (sortedUpdates.isEmpty()) {
-                        findViewById(R.id.no_new_updates_view).setVisibility(View.VISIBLE);
                         findViewById(R.id.recycler_view).setVisibility(View.GONE);
+                        updateLottieAnimation();
                     }
                 }
+                updateHeaderState();
             }
         };
+    }
 
-        if (!mIsTV) {
-            Toolbar toolbar = findViewById(R.id.toolbar);
-            setSupportActionBar(toolbar);
-            ActionBar actionBar = getSupportActionBar();
-            if (actionBar != null) {
-                actionBar.setDisplayShowTitleEnabled(false);
-                actionBar.setDisplayHomeAsUpEnabled(true);
-                final int statusBarHeight;
-                TypedValue tv = new TypedValue();
-                if (getTheme().resolveAttribute(android.R.attr.actionBarSize, tv, true)) {
-                    statusBarHeight = TypedValue.complexToDimensionPixelSize(
-                            tv.data, getResources().getDisplayMetrics());
-                } else {
-                    statusBarHeight = 0;
-                }
-                RelativeLayout headerContainer = findViewById(R.id.header_container);
-                recyclerView.setOnApplyWindowInsetsListener((view, insets) -> {
-                    int top = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top;
-                    CollapsingToolbarLayout.LayoutParams lp =
-                            (CollapsingToolbarLayout.LayoutParams)
-                                    headerContainer.getLayoutParams();
-                    lp.topMargin = top + statusBarHeight;
-                    headerContainer.setLayoutParams(lp);
-                    return insets;
-                });
-            }
-        }
-
-        TextView headerTitle = findViewById(R.id.header_title);
-        headerTitle.setText(getString(R.string.header_title_text,
-                DeviceInfoUtils.getBuildVersion()));
-
-        updateLastCheckedString();
-
-        TextView headerBuildVersion = findViewById(R.id.header_build_version);
-        headerBuildVersion.setText(
-                getString(R.string.header_android_version, Build.VERSION.RELEASE));
-
+    private void setupHeaderContent() {
         TextView headerBuildDate = findViewById(R.id.header_build_date);
         headerBuildDate.setText(StringGenerator.getDateLocalizedUTC(this,
                 DateFormat.LONG, DeviceInfoUtils.getBuildDateTimestamp()));
 
+        TextView headerBuildVersion = findViewById(R.id.header_build_version);
+        headerBuildVersion.setText(getString(R.string.header_version_combined,
+                Build.VERSION.RELEASE, DeviceInfoUtils.getBuildVersion()));
+
         TextView headerSecurityPatch = findViewById(R.id.header_security_patch_level);
         headerSecurityPatch.setText(getString(R.string.header_android_security_update,
                 DeviceInfoUtils.getSecurityPatch(StringGenerator.getCurrentLocale(this))));
+    }
 
-        if (!mIsTV) {
-            // Switch between header title and appbar title minimizing overlaps
-            final CollapsingToolbarLayout collapsingToolbar = findViewById(R.id.collapsing_toolbar);
-            final AppBarLayout appBar = findViewById(R.id.app_bar);
+    private void setupToolbar() {
+        if (mIsTV) {
+            return;
+        }
+
+        final CollapsingToolbarLayout collapsingToolbar = findViewById(R.id.collapsing_toolbar);
+        final AppBarLayout appBar = findViewById(R.id.app_bar);
+
+        mHeaderTitle = getString(R.string.display_name);
+        if (collapsingToolbar != null) {
+            collapsingToolbar.setTitle(mHeaderTitle);
+        }
+
+        if (appBar != null) {
             appBar.addOnOffsetChangedListener(new AppBarLayout.OnOffsetChangedListener() {
-                boolean mIsShown = false;
+                boolean mIsCollapsed = false;
 
                 @Override
                 public void onOffsetChanged(AppBarLayout appBarLayout, int verticalOffset) {
                     int scrollRange = appBarLayout.getTotalScrollRange();
-                    if (!mIsShown && scrollRange + verticalOffset < 10) {
+                    if (!mIsCollapsed && scrollRange + verticalOffset < 10) {
                         collapsingToolbar.setTitle(getString(R.string.display_name));
-                        mIsShown = true;
-                    } else if (mIsShown && scrollRange + verticalOffset > 100) {
-                        collapsingToolbar.setTitle(null);
-                        mIsShown = false;
+                        mIsCollapsed = true;
+                    } else if (mIsCollapsed && scrollRange + verticalOffset > 100) {
+                        collapsingToolbar.setTitle(mHeaderTitle);
+                        mIsCollapsed = false;
                     }
                 }
             });
 
             if (!Utils.hasTouchscreen(this)) {
-                // This can't be collapsed without a touchscreen
                 appBar.setExpanded(false);
             }
-        } else {
+        }
+    }
+
+    private void setupClickListeners() {
+        if (mIsTV) {
             findViewById(R.id.preferences).setOnClickListener(v ->
                     startActivity(new Intent(this, PreferencesActivity.class)));
         }
 
-        maybeShowWelcomeMessage();
+        findViewById(R.id.report_issue_button).setOnClickListener(v -> {
+            Intent intent = new Intent(Intent.ACTION_VIEW,
+                    Uri.parse(getString(R.string.report_issue_url)));
+            startActivity(intent);
+        });
+
+        findViewById(R.id.show_changelog_button).setOnClickListener(v -> {
+            Intent intent = new Intent(Intent.ACTION_VIEW,
+                    Uri.parse(Utils.getChangelogURL(this)));
+            startActivity(intent);
+        });
+    }
+
+    private void setupPreferenceListener() {
+        prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        mPrefListener = (sharedPreferences, key) -> {
+            if (Constants.PREF_LAST_UPDATE_CHECK.equals(key)) {
+                runOnUiThread(() -> {
+                    updateLastCheckedString();
+                    refreshUpdatesList();
+                });
+            }
+        };
+        updateLastCheckedString();
+    }
+
+    private void updateHeaderState() {
+        ImageView headerIcon = findViewById(R.id.header_icon);
+
+        if (mUpdaterService != null && mUpdaterService.getUpdaterController() != null) {
+            UpdaterController controller = mUpdaterService.getUpdaterController();
+            for (UpdateInfo update : controller.getUpdates()) {
+                String downloadId = update.getDownloadId();
+                if (controller.isInstallingUpdate(downloadId)) {
+                    mHeaderTitle = getString(R.string.installing_update);
+                    headerIcon.setImageResource(R.drawable.settingslib_expressive_icon_ongoing);
+                    return;
+                } else if (controller.isWaitingForReboot(downloadId)) {
+                    mHeaderTitle = getString(R.string.reboot_to_complete_update);
+                    headerIcon.setImageResource(R.drawable.settingslib_expressive_icon_pending);
+                    return;
+                }
+            }
+        }
+
+        if (mAdapter != null && mAdapter.getItemCount() > 0) {
+            mHeaderTitle = getString(R.string.new_updates_found_title);
+            headerIcon.setImageResource(R.drawable.settingslib_expressive_icon_level_medium);
+        } else {
+            mHeaderTitle = getString(R.string.snack_no_updates_found);
+            headerIcon.setImageResource(R.drawable.settingslib_expressive_icon_level_low);
+        }
     }
 
     @Override
@@ -232,6 +316,8 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
         intentFilter.addAction(UpdaterController.ACTION_INSTALL_PROGRESS);
         intentFilter.addAction(UpdaterController.ACTION_UPDATE_REMOVED);
         LocalBroadcastManager.getInstance(this).registerReceiver(mBroadcastReceiver, intentFilter);
+        prefs.registerOnSharedPreferenceChangeListener(mPrefListener);
+        monitorConnectivity();
     }
 
     @Override
@@ -251,12 +337,18 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
         if (mUpdaterService != null) {
             unbindService(mConnection);
         }
+        prefs.unregisterOnSharedPreferenceChangeListener(mPrefListener);
+        ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(
+                Context.CONNECTIVITY_SERVICE);
+        if (connectivityManager != null && mNetworkCallback != null) {
+            connectivityManager.unregisterNetworkCallback(mNetworkCallback);
+        }
         super.onStop();
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_toolbar, menu);
+        getMenuInflater().inflate(R.menu.menu_updates, menu);
         return super.onCreateOptionsMenu(menu);
     }
 
@@ -266,22 +358,11 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
         if (itemId == R.id.menu_preferences) {
             startActivity(new Intent(this, PreferencesActivity.class));
             return true;
-        } else if (itemId == R.id.menu_show_changelog) {
-            Intent openUrl = new Intent(Intent.ACTION_VIEW,
-                    Uri.parse(Utils.getChangelogURL(this)));
-            startActivity(openUrl);
-            return true;
         } else if (itemId == R.id.menu_local_update) {
             mUpdateImporter.openImportPicker();
             return true;
         }
         return super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    public boolean onSupportNavigateUp() {
-        onBackPressed();
-        return true;
     }
 
     @Override
@@ -324,7 +405,10 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
 
         mAdapter.addItem(update.getDownloadId());
         findViewById(R.id.recycler_view).setVisibility(View.VISIBLE);
-        findViewById(R.id.no_new_updates_view).setVisibility(View.GONE);
+        if (mLottieAnimationView != null) {
+            mLottieAnimationView.setVisibility(View.GONE);
+            mLottieAnimationView.pauseAnimation();
+        }
 
         final Runnable deleteUpdate = () -> UpdaterController.getInstance(this)
                 .deleteUpdate(update.getDownloadId());
@@ -340,52 +424,20 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
                 .show();
     }
 
-    private final ServiceConnection mConnection = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName className, IBinder service) {
-            UpdaterService.LocalBinder binder = (UpdaterService.LocalBinder) service;
-            mUpdaterService = binder.getService();
-            mAdapter.setUpdaterController(mUpdaterService.getUpdaterController());
-            getUpdatesList();
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName componentName) {
-            mAdapter.setUpdaterController(null);
-            mUpdaterService = null;
-            mAdapter.notifyDataSetChanged();
-        }
-    };
-
     private void loadUpdatesList(File jsonFile)
             throws IOException, JSONException {
         Log.d(TAG, "Adding remote updates");
         UpdaterController controller = mUpdaterService.getUpdaterController();
-        boolean newUpdates = false;
 
         List<UpdateInfo> updates = Utils.parseJson(jsonFile, true);
         List<String> updatesOnline = new ArrayList<>();
         for (UpdateInfo update : updates) {
-            newUpdates |= controller.addUpdate(update);
+            controller.addUpdate(update, false, false);
             updatesOnline.add(update.getDownloadId());
         }
         controller.setUpdatesAvailableOnline(updatesOnline, true);
 
-        List<String> updateIds = new ArrayList<>();
-        List<UpdateInfo> sortedUpdates = controller.getUpdates();
-        if (sortedUpdates.isEmpty()) {
-            findViewById(R.id.no_new_updates_view).setVisibility(View.VISIBLE);
-            findViewById(R.id.recycler_view).setVisibility(View.GONE);
-        } else {
-            findViewById(R.id.no_new_updates_view).setVisibility(View.GONE);
-            findViewById(R.id.recycler_view).setVisibility(View.VISIBLE);
-            sortedUpdates.sort((u1, u2) -> Long.compare(u2.getTimestamp(), u1.getTimestamp()));
-            for (UpdateInfo update : sortedUpdates) {
-                updateIds.add(update.getDownloadId());
-            }
-            mAdapter.setData(updateIds);
-            mAdapter.notifyDataSetChanged();
-        }
+        updateUi();
     }
 
     private void getUpdatesList() {
@@ -468,37 +520,39 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
         downloadClient.start();
     }
 
+    private void refreshUpdatesList() {
+        if (mUpdaterService == null) {
+            return;
+        }
+        File jsonFile = Utils.getCachedUpdateList(this);
+        if (jsonFile.exists()) {
+            try {
+                loadUpdatesList(jsonFile);
+                updateHeaderState();
+                Log.d(TAG, "Updates list refreshed");
+            } catch (IOException | JSONException e) {
+                Log.e(TAG, "Error while refreshing updates list", e);
+            }
+        }
+    }
+
     private void updateLastCheckedString() {
-        final SharedPreferences preferences =
-                PreferenceManager.getDefaultSharedPreferences(this);
-        long lastCheck = preferences.getLong(Constants.PREF_LAST_UPDATE_CHECK, -1) / 1000;
+        long lastCheck = prefs.getLong(Constants.PREF_LAST_UPDATE_CHECK, -1) / 1000;
         String lastCheckString = getString(R.string.header_last_updates_check,
                 StringGenerator.getDateLocalized(this, DateFormat.LONG, lastCheck),
                 StringGenerator.getTimeLocalized(this, lastCheck));
         TextView headerLastCheck = findViewById(R.id.header_last_check);
+
         headerLastCheck.setText(lastCheckString);
-    }
 
-    private void handleDownloadStatusChange(String downloadId) {
-        if (Update.LOCAL_ID.equals(downloadId)) {
-            return;
-        }
-
-        UpdateInfo update = mUpdaterService.getUpdaterController().getUpdate(downloadId);
-        switch (update.getStatus()) {
-            case PAUSED_ERROR:
-                showSnackbar(R.string.snack_download_failed, Snackbar.LENGTH_LONG);
-                break;
-            case VERIFICATION_FAILED:
-                showSnackbar(R.string.snack_download_verification_failed, Snackbar.LENGTH_LONG);
-                break;
-            case VERIFIED:
-                showSnackbar(R.string.snack_download_verified, Snackbar.LENGTH_LONG);
-                break;
+        long lastCheckMillis = prefs.getLong(Constants.PREF_LAST_UPDATE_CHECK, -1);
+        if (System.currentTimeMillis() - lastCheckMillis > 60 * 1000) {
+            headerLastCheck.setTextColor(getColor(R.color.settingslib_colorBackgroundLevel_medium));
+        } else {
+            headerLastCheck.setTextColor(getColor(R.color.settingslib_colorBackgroundLevel_low));
         }
     }
 
-    @Override
     public void exportUpdate(UpdateInfo update) {
         mToBeExported = update;
 
@@ -510,6 +564,10 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
         mExportUpdate.launch(intent);
     }
 
+    public void showSnackbar(int messageId, int duration) {
+        Toast.makeText(this, messageId, duration).show();
+    }
+
     private void exportUpdate(Uri uri) {
         Intent intent = new Intent(this, ExportUpdateService.class);
         intent.setAction(ExportUpdateService.ACTION_START_EXPORTING);
@@ -518,9 +576,99 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
         startService(intent);
     }
 
-    @Override
-    public void showSnackbar(int stringId, int duration) {
-        Snackbar.make(findViewById(R.id.main_container), stringId, duration).show();
+    /**
+     * Check the connectivity status of the device
+     */
+    private void monitorConnectivity() {
+        ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(
+                Context.CONNECTIVITY_SERVICE);
+        if (connectivityManager == null) {
+            return;
+        }
+
+        mNetworkCallback = new ConnectivityManager.NetworkCallback() {
+            @Override
+            public void onAvailable(@NonNull android.net.Network network) {
+                runOnUiThread(() -> {
+                    mIsOnline = true;
+                    updateLottieAnimation();
+                });
+            }
+
+            @Override
+            public void onLost(@NonNull android.net.Network network) {
+                runOnUiThread(() -> {
+                    mIsOnline = false;
+                    updateLottieAnimation();
+                });
+            }
+        };
+
+        // Initialize mIsOnline based on current state provided by synchronous check
+        android.net.Network activeNetwork = connectivityManager.getActiveNetwork();
+        if (activeNetwork != null) {
+            android.net.NetworkCapabilities capabilities =
+                    connectivityManager.getNetworkCapabilities(activeNetwork);
+             if (capabilities != null && capabilities.hasCapability(
+                        android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
+                 mIsOnline = true;
+             }
+        }
+        updateLottieAnimation();
+
+        connectivityManager.registerDefaultNetworkCallback(mNetworkCallback);
+    }
+
+    private void updateLottieAnimation() {
+        boolean isEmpty = findViewById(R.id.recycler_view).getVisibility() == View.GONE;
+        if (isEmpty) {
+            if (mIsOnline) {
+                mLottieAnimationView.setVisibility(View.GONE);
+                mLottieAnimationView.pauseAnimation();
+            } else {
+                mLottieAnimationView.setVisibility(View.VISIBLE);
+                mLottieAnimationView.playAnimation();
+            }
+        }
+    }
+
+    private void updateUi() {
+        UpdaterController controller = mUpdaterService.getUpdaterController();
+        List<UpdateInfo> sortedUpdates = controller.getUpdates();
+        sortedUpdates.sort((u1, u2) -> Long.compare(u2.getTimestamp(), u1.getTimestamp()));
+
+        List<String> updateIds = new ArrayList<>();
+        int checkedId = mChipGroup.getCheckedChipId();
+        
+        for (UpdateInfo update : sortedUpdates) {
+            boolean include = false;
+            if (checkedId == R.id.filter_all) {
+                include = true;
+            } else if (checkedId == R.id.filter_latest) {
+                if (updateIds.isEmpty()) {
+                    include = true;
+                }
+            } else if (checkedId == R.id.filter_downloaded) {
+                 if (Utils.canInstall(update) || update.getPersistentStatus() == org.lineageos.updater.model.UpdateStatus.Persistent.VERIFIED) {
+                     include = true;
+                 }
+            }
+            
+            if (include) {
+                updateIds.add(update.getDownloadId());
+            }
+        }
+        
+        if (updateIds.isEmpty()) {
+            findViewById(R.id.recycler_view).setVisibility(View.GONE);
+            updateLottieAnimation();
+        } else {
+            findViewById(R.id.recycler_view).setVisibility(View.VISIBLE);
+            mLottieAnimationView.setVisibility(View.GONE);
+            mLottieAnimationView.pauseAnimation();
+            mAdapter.setData(updateIds);
+            mAdapter.notifyDataSetChanged();
+        }
     }
 
 

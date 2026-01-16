@@ -131,6 +131,11 @@ class ABUpdateInstaller {
         return pref.getString(ABUpdateInstaller.PREF_INSTALLING_SUSPENDED_AB_ID, null) != null;
     }
 
+    static synchronized boolean isInstallingUpdateSuspended(Context context, String downloadId) {
+        SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(context);
+        return TextUtils.equals(pref.getString(ABUpdateInstaller.PREF_INSTALLING_SUSPENDED_AB_ID, null), downloadId);
+    }
+
     static synchronized boolean isWaitingForReboot(Context context, String downloadId) {
         String waitingId = PreferenceManager.getDefaultSharedPreferences(context)
                 .getString(Constants.PREF_NEEDS_REBOOT_ID, null);

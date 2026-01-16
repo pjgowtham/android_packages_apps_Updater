@@ -35,11 +35,11 @@ import org.lineageos.updater.model.UpdateStatus;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class UpdaterController {
 
@@ -97,7 +97,7 @@ public class UpdaterController {
         }
     }
 
-    private final Map<String, DownloadEntry> mDownloads = new HashMap<>();
+    private final Map<String, DownloadEntry> mDownloads = new ConcurrentHashMap<>();
 
     void notifyUpdateChange(String downloadId) {
         Intent intent = new Intent();
@@ -324,6 +324,10 @@ public class UpdaterController {
     }
 
     public boolean addUpdate(final UpdateInfo updateInfo, boolean availableOnline) {
+        return addUpdate(updateInfo, availableOnline, true);
+    }
+
+    public boolean addUpdate(final UpdateInfo updateInfo, boolean availableOnline, boolean notify) {
         Log.d(TAG, "Adding download: " + updateInfo.getDownloadId());
         if (mDownloads.containsKey(updateInfo.getDownloadId())) {
             Log.d(TAG, "Download (" + updateInfo.getDownloadId() + ") already added");
@@ -344,6 +348,9 @@ public class UpdaterController {
         }
         update.setAvailableOnline(availableOnline);
         mDownloads.put(update.getDownloadId(), new DownloadEntry(update));
+        if (notify) {
+            notifyUpdateChange(update.getDownloadId());
+        }
         return true;
     }
 
@@ -366,6 +373,11 @@ public class UpdaterController {
             Log.d(TAG, "Changing name with " + destination.getName());
         }
         update.setFile(destination);
+        if (update.getDownloadUrl() == null) {
+            Log.e(TAG, "Download URL is null for " + downloadId);
+            notifyUpdateChange(downloadId);
+            return;
+        }
         DownloadClient downloadClient;
         try {
             downloadClient = new DownloadClient.Builder()
@@ -382,6 +394,7 @@ public class UpdaterController {
             return;
         }
         addDownloadClient(entry, downloadClient);
+        update.setProgress(0);
         update.setStatus(UpdateStatus.STARTING);
         notifyUpdateChange(downloadId);
         downloadClient.start();
@@ -391,6 +404,10 @@ public class UpdaterController {
     @SuppressLint("WakelockTimeout")
     public void resumeDownload(String downloadId) {
         Log.d(TAG, "Resuming " + downloadId);
+        if (ABUpdateInstaller.isInstallingUpdateSuspended(mContext, downloadId)) {
+            ABUpdateInstaller.getInstance(mContext, this).resume();
+            return;
+        }
         if (!mDownloads.containsKey(downloadId) || isDownloading(downloadId)) {
             return;
         }
@@ -439,18 +456,18 @@ public class UpdaterController {
 
     public void pauseDownload(String downloadId) {
         Log.d(TAG, "Pausing " + downloadId);
-        if (!isDownloading(downloadId)) {
-            return;
-        }
-
-        DownloadEntry entry = mDownloads.get(downloadId);
-        if (entry != null) {
-            entry.mDownloadClient.cancel();
-            removeDownloadClient(entry);
-            entry.mUpdate.setStatus(UpdateStatus.PAUSED);
-            entry.mUpdate.setEta(0);
-            entry.mUpdate.setSpeed(0);
-            notifyUpdateChange(downloadId);
+        if (isDownloading(downloadId)) {
+            DownloadEntry entry = mDownloads.get(downloadId);
+            if (entry != null) {
+                entry.mDownloadClient.cancel();
+                removeDownloadClient(entry);
+                entry.mUpdate.setStatus(UpdateStatus.PAUSED);
+                entry.mUpdate.setEta(0);
+                entry.mUpdate.setSpeed(0);
+                notifyUpdateChange(downloadId);
+            }
+        } else if (ABUpdateInstaller.isInstallingUpdate(mContext, downloadId)) {
+            ABUpdateInstaller.getInstance(mContext, this).suspend();
         }
     }
 
@@ -565,6 +582,10 @@ public class UpdaterController {
     public boolean isInstallingUpdate(String downloadId) {
         return UpdateInstaller.isInstalling(downloadId) ||
                 ABUpdateInstaller.isInstallingUpdate(mContext, downloadId);
+    }
+
+    public boolean isInstallingUpdateSuspended(String downloadId) {
+        return ABUpdateInstaller.isInstallingUpdateSuspended(mContext, downloadId);
     }
 
     public boolean isInstallingABUpdate() {
