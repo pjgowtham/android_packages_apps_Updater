@@ -19,7 +19,6 @@ import androidx.core.content.getSystemService
 import androidx.preference.PreferenceManager
 import org.lineageos.updater.R
 import org.lineageos.updater.UpdaterReceiver
-import org.lineageos.updater.UpdatesActivity
 import org.lineageos.updater.controller.UpdaterService
 import org.lineageos.updater.model.UpdateInfo
 import org.lineageos.updater.model.UpdateStatus
@@ -382,7 +381,7 @@ class NotificationHelper private constructor(context: Context) {
 
     private fun activityIntent() = PendingIntent.getActivity(
         context, 0,
-        Intent(context, UpdatesActivity::class.java),
+        Intent(context, Class.forName("org.lineageos.updater.UpdatesActivity")),
         PENDING_INTENT_FLAGS
     )
 
