@@ -33,7 +33,6 @@ import androidx.preference.PreferenceManager;
 import org.lineageos.updater.misc.Constants;
 import org.lineageos.updater.misc.NotificationHelper;
 import org.lineageos.updater.misc.Utils;
-import org.lineageos.updater.model.Preferences;
 import org.lineageos.updater.model.Update;
 import org.lineageos.updater.model.UpdateInfo;
 import org.lineageos.updater.model.UpdateStatus;
@@ -183,7 +182,7 @@ public class UpdaterService extends Service {
                 break;
 
             case ACTION_INSTALL_RESUME:
-                if (ABUpdateInstaller.isInstallingUpdateSuspended(this)) {
+                if (ABUpdateInstaller.isInstallingUpdateSuspended(this, downloadId)) {
                     ABUpdateInstaller installer = ABUpdateInstaller.getInstance(this, mUpdaterController);
                     installer.reconnect();
                     installer.resume();
@@ -273,7 +272,7 @@ public class UpdaterService extends Service {
             return;
         }
         SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(this);
-        boolean deleteUpdate = pref.getBoolean(Preferences.AUTO_DELETE_UPDATES, false);
+        boolean deleteUpdate = pref.getBoolean(Constants.AUTO_DELETE_UPDATES, false);
         // Always delete local updates
         boolean isLocal = Update.LOCAL_ID.equals(downloadId);
         if (deleteUpdate || isLocal) {

@@ -32,9 +32,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.lineageos.updater.R;
 import org.lineageos.updater.controller.UpdaterService;
-import org.lineageos.updater.controller.UpdaterService;
 import org.lineageos.updater.database.*;
-import org.lineageos.updater.model.Preferences;
 import org.lineageos.updater.model.Update;
 import org.lineageos.updater.model.UpdateBaseInfo;
 import org.lineageos.updater.model.UpdateInfo;
@@ -229,10 +227,10 @@ public class Utils {
         removeUncryptFiles(downloadPath);
 
         long buildTimestamp = DeviceInfoUtils.getBuildDateTimestamp();
-        long prevTimestamp = preferences.getLong(Constants.PREF_INSTALL_OLD_TIMESTAMP, 0);
-        String lastUpdatePath = preferences.getString(Constants.PREF_INSTALL_PACKAGE_PATH, null);
-        boolean reinstalling = preferences.getBoolean(Constants.PREF_INSTALL_AGAIN, false);
-        boolean deleteUpdates = preferences.getBoolean(Preferences.AUTO_DELETE_UPDATES, false);
+        long prevTimestamp = preferences.getLong(Constants.INSTALL_OLD_TIMESTAMP, 0);
+        String lastUpdatePath = preferences.getString(Constants.INSTALL_PACKAGE_PATH, null);
+        boolean reinstalling = preferences.getBoolean(Constants.INSTALL_AGAIN, false);
+        boolean deleteUpdates = preferences.getBoolean(Constants.AUTO_DELETE_UPDATES, false);
         if ((buildTimestamp != prevTimestamp || reinstalling) && deleteUpdates &&
                 lastUpdatePath != null) {
             File lastUpdate = new File(lastUpdatePath);
@@ -240,7 +238,7 @@ public class Utils {
                 //noinspection ResultOfMethodCallIgnored
                 lastUpdate.delete();
                 // Remove the pref not to delete the file if re-downloaded
-                preferences.edit().remove(Constants.PREF_INSTALL_PACKAGE_PATH).apply();
+                preferences.edit().remove(Constants.INSTALL_PACKAGE_PATH).apply();
             }
         }
 

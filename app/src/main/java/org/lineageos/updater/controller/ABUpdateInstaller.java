@@ -27,7 +27,6 @@ import androidx.preference.PreferenceManager;
 
 import org.lineageos.updater.misc.Constants;
 import org.lineageos.updater.misc.Utils;
-import org.lineageos.updater.model.Preferences;
 import org.lineageos.updater.model.Update;
 import org.lineageos.updater.model.UpdateStatus;
 
@@ -120,23 +119,23 @@ class ABUpdateInstaller {
     static synchronized boolean isInstallingUpdate(Context context) {
         SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(context);
         return pref.getString(ABUpdateInstaller.PREF_INSTALLING_AB_ID, null) != null ||
-                pref.getString(Constants.PREF_NEEDS_REBOOT_ID, null) != null;
+                pref.getString(Constants.NEEDS_REBOOT_ID, null) != null;
     }
 
     static synchronized boolean isInstallingUpdate(Context context, String downloadId) {
         SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(context);
         return downloadId.equals(pref.getString(ABUpdateInstaller.PREF_INSTALLING_AB_ID, null)) ||
-                TextUtils.equals(pref.getString(Constants.PREF_NEEDS_REBOOT_ID, null), downloadId);
+                TextUtils.equals(pref.getString(Constants.NEEDS_REBOOT_ID, null), downloadId);
     }
 
-    static synchronized boolean isInstallingUpdateSuspended(Context context) {
+    static synchronized boolean isInstallingUpdateSuspended(Context context, String downloadId) {
         SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(context);
-        return pref.getString(ABUpdateInstaller.PREF_INSTALLING_SUSPENDED_AB_ID, null) != null;
+        return downloadId.equals(pref.getString(ABUpdateInstaller.PREF_INSTALLING_SUSPENDED_AB_ID, null));
     }
 
     static synchronized boolean isWaitingForReboot(Context context, String downloadId) {
         String waitingId = PreferenceManager.getDefaultSharedPreferences(context)
-                .getString(Constants.PREF_NEEDS_REBOOT_ID, null);
+                .getString(Constants.NEEDS_REBOOT_ID, null);
         return TextUtils.equals(waitingId, downloadId);
     }
 
@@ -145,8 +144,8 @@ class ABUpdateInstaller {
         mContext = context.getApplicationContext();
         mUpdateEngine = new UpdateEngine();
         mSettingsListener = (sharedPreferences, key) -> {
-            if (Preferences.AB_PERF_MODE.equals(key)) {
-                boolean enable = sharedPreferences.getBoolean(key, false);
+            if (Constants.AB_PERF_MODE.equals(key)) {
+                boolean enable = sharedConstants.getBoolean(key, false);
                 mUpdateEngine.setPerformanceMode(enable);
             }
         };
@@ -220,7 +219,7 @@ class ABUpdateInstaller {
         }
 
         boolean enableABPerfMode = PreferenceManager.getDefaultSharedPreferences(mContext)
-                .getBoolean(Preferences.AB_PERF_MODE, false);
+                .getBoolean(Constants.AB_PERF_MODE, false);
         mUpdateEngine.setPerformanceMode(enableABPerfMode);
 
         String zipFileUri = "file://" + file.getAbsolutePath();
@@ -269,7 +268,7 @@ class ABUpdateInstaller {
     private void installationDone(boolean needsReboot) {
         String id = needsReboot ? mDownloadId : null;
         PreferenceManager.getDefaultSharedPreferences(mContext).edit()
-                .putString(Constants.PREF_NEEDS_REBOOT_ID, id)
+                .putString(Constants.NEEDS_REBOOT_ID, id)
                 .remove(PREF_INSTALLING_AB_ID)
                 .apply();
     }
@@ -318,7 +317,7 @@ class ABUpdateInstaller {
     }
 
     public void resume() {
-        if (!isInstallingUpdateSuspended(mContext)) {
+        if (!isInstallingUpdateSuspended(mContext, mDownloadId)) {
             Log.e(TAG, "cancel: No update is suspended");
             return;
         }

@@ -213,23 +213,23 @@ class NotificationHelper private constructor(context: Context) {
     fun checkAndNotifyUpdateFailedOnBoot() {
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
 
-        if (prefs.getBoolean(Constants.PREF_INSTALL_AGAIN, false) ||
-            prefs.getBoolean(Constants.PREF_INSTALL_NOTIFIED, false)
+        if (prefs.getBoolean(Constants.INSTALL_AGAIN, false) ||
+            prefs.getBoolean(Constants.INSTALL_NOTIFIED, false)
         ) return
 
         val currentTimestamp = DeviceInfoUtils.buildDateTimestamp
-        val lastTimestamp = prefs.getLong(Constants.PREF_INSTALL_OLD_TIMESTAMP, -1)
+        val lastTimestamp = prefs.getLong(Constants.INSTALL_OLD_TIMESTAMP, -1)
 
         if (currentTimestamp == lastTimestamp) {
             val buildDate = StringGenerator.getDateLocalizedUTC(
                 context, DateFormat.MEDIUM,
-                prefs.getLong(Constants.PREF_INSTALL_NEW_TIMESTAMP, 0)
+                prefs.getLong(Constants.INSTALL_NEW_TIMESTAMP, 0)
             )
             val buildInfo = context.getString(
                 R.string.list_build_version_date,
                 DeviceInfoUtils.buildVersion, buildDate
             )
-            prefs.edit { putBoolean(Constants.PREF_INSTALL_NOTIFIED, true) }
+            prefs.edit { putBoolean(Constants.INSTALL_NOTIFIED, true) }
             notifyUpdateFailed(buildInfo)
         }
     }
@@ -303,7 +303,7 @@ class NotificationHelper private constructor(context: Context) {
     fun cancel(notificationId: Int) = notificationManager.cancel(notificationId)
 
     private fun base(channelId: String) = Notification.Builder(context, channelId).apply {
-        setSmallIcon(R.drawable.ic_system_update)
+        setSmallIcon(R.drawable.ic_updater)
         setOnlyAlertOnce(true)
         setVisibility(Notification.VISIBILITY_PUBLIC)
     }

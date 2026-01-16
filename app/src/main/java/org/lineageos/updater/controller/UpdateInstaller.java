@@ -79,15 +79,15 @@ class UpdateInstaller {
         UpdateInfo update = mUpdaterController.getUpdate(downloadId);
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(mContext);
         long buildTimestamp = DeviceInfoUtils.getBuildDateTimestamp();
-        long lastBuildTimestamp = preferences.getLong(Constants.PREF_INSTALL_OLD_TIMESTAMP,
+        long lastBuildTimestamp = preferences.getLong(Constants.INSTALL_OLD_TIMESTAMP,
                 buildTimestamp);
         boolean isReinstalling = buildTimestamp == lastBuildTimestamp;
         preferences.edit()
-                .putLong(Constants.PREF_INSTALL_OLD_TIMESTAMP, buildTimestamp)
-                .putLong(Constants.PREF_INSTALL_NEW_TIMESTAMP, update.getTimestamp())
-                .putString(Constants.PREF_INSTALL_PACKAGE_PATH, update.getFile().getAbsolutePath())
-                .putBoolean(Constants.PREF_INSTALL_AGAIN, isReinstalling)
-                .putBoolean(Constants.PREF_INSTALL_NOTIFIED, false)
+                .putLong(Constants.INSTALL_OLD_TIMESTAMP, buildTimestamp)
+                .putLong(Constants.INSTALL_NEW_TIMESTAMP, update.getTimestamp())
+                .putString(Constants.INSTALL_PACKAGE_PATH, update.getFile().getAbsolutePath())
+                .putBoolean(Constants.INSTALL_AGAIN, isReinstalling)
+                .putBoolean(Constants.INSTALL_NOTIFIED, false)
                 .apply();
 
         if (Utils.isEncrypted(mContext, update.getFile())) {
