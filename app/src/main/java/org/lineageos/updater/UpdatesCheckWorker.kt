@@ -6,7 +6,6 @@
 package org.lineageos.updater
 
 import android.content.Context
-import android.os.SystemProperties
 import android.util.Log
 import androidx.core.content.edit
 import androidx.preference.PreferenceManager
@@ -23,11 +22,10 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.lineageos.updater.download.DownloadClient
-import org.lineageos.updater.misc.Constants
 import org.lineageos.updater.misc.DeviceInfoUtils
 import org.lineageos.updater.misc.NotificationHelper
 import org.lineageos.updater.misc.Utils
-import org.lineageos.updater.model.Preferences
+import org.lineageos.updater.misc.Constants
 import java.io.File
 import java.io.IOException
 import java.util.UUID
@@ -42,116 +40,111 @@ class UpdatesCheckWorker(
     workerParams: WorkerParameters,
 ) : CoroutineWorker(context, workerParams) {
 
-    private val preferences = PreferenceManager.getDefaultSharedPreferences(context)
-
     override suspend fun doWork(): Result {
         val isImmediateCheck = inputData.getBoolean(KEY_IMMEDIATE_CHECK, false)
         if (!isImmediateCheck && !isPeriodicCheckEnabled(context)) {
             return Result.success()
         }
 
-        Utils.cleanupDownloadsDir(context)
-
-        val json = Utils.getCachedUpdateList(context)
-        val jsonNew = File(json.absolutePath + UUID.randomUUID())
-        val url = getUpdateCheckUrl(context)
-
-        try {
-            return suspendCancellableCoroutine { continuation ->
-                try {
-                    val client = DownloadClient.Builder()
-                        .setUrl(url)
-                        .setDestination(jsonNew)
-                        .setDownloadCallback(object : DownloadClient.DownloadCallback {
-                            override fun onResponse(headers: DownloadClient.Headers) {
-                            }
-
-                            override fun onSuccess() {
-                                try {
-                                    if (json.exists() && checkForNewUpdates(json, jsonNew)) {
-                                        NotificationHelper.getInstance(context).notifyNewUpdates()
-                                    }
-                                    if (!jsonNew.renameTo(json)) {
-                                        throw IOException("Could not rename downloaded file to ${json.absolutePath}")
-                                    }
-                                    preferences.edit {
-                                        putLong(
-                                            Constants.PREF_LAST_UPDATE_CHECK,
-                                            System.currentTimeMillis()
-                                        )
-                                    }
-                                    if (continuation.isActive) {
-                                        continuation.resume(Result.success())
-                                    }
-                                } catch (e: Exception) {
-                                    Log.e(TAG, "Could not process updates list", e)
-                                    if (continuation.isActive) {
-                                        continuation.resume(Result.retry())
-                                    }
-                                }
-                            }
-
-                            override fun onFailure(cancelled: Boolean) {
-                                if (cancelled) {
-                                    Log.d(TAG, "Download cancelled")
-                                    // Worker was cancelled
-                                } else {
-                                    Log.e(TAG, "Download failed")
-                                    if (continuation.isActive) {
-                                        continuation.resume(Result.retry())
-                                    }
-                                }
-                            }
-                        })
-                        .build()
-
-                    client.start()
-
-                    continuation.invokeOnCancellation {
-                        client.cancel()
-                    }
-                } catch (e: IOException) {
-                    Log.e(TAG, "Could not download updates list, retrying.", e)
-                    if (continuation.isActive) {
-                        continuation.resume(Result.retry())
-                    }
-                }
-            }
-        } finally {
-            jsonNew.delete()
+        val result = UpdateChecker(context).check()
+        return if (result.isSuccess) {
+            Result.success()
+        } else {
+            Result.retry()
         }
     }
 
-    /**
-     * Compares two JSON formatted update list files.
-     *
-     * @param oldJson Old update list
-     * @param newJson New update list
-     * @return True if newJson has at least one compatible update not in oldJson
-     */
-    private fun checkForNewUpdates(oldJson: File, newJson: File): Boolean {
-        val oldList = Utils.parseJson(oldJson, true)
-        val newList = Utils.parseJson(newJson, true)
-        val oldIds = oldList.map { it.downloadId }.toSet()
-        return newList.any { it.downloadId !in oldIds }
-    }
+    private class UpdateChecker(private val context: Context) {
 
-    companion object {
-        private const val TAG = "UpdatesCheckWorker"
-        private const val KEY_IMMEDIATE_CHECK = "immediate_check"
-        private const val RETRY_DELAY_HOURS = 2L
+        suspend fun check(): kotlin.Result<File> {
+            val json = Utils.getCachedUpdateList(context)
+            val jsonNew = File(json.absolutePath + UUID.randomUUID())
+            val url = getUpdateCheckUrl(context)
 
-        const val WORK_NAME = "updates_check"
-        const val WORK_NAME_IMMEDIATE = "updates_check_immediate"
+            return try {
+                suspendCancellableCoroutine { continuation ->
+                    try {
+                        val client = DownloadClient.Builder()
+                            .setUrl(url)
+                            .setDestination(jsonNew)
+                            .setDownloadCallback(object : DownloadClient.DownloadCallback {
+                                override fun onResponse(headers: DownloadClient.Headers) {
+                                }
 
-        private val CONSTRAINTS = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
+                                override fun onSuccess() {
+                                    try {
+                                        val hasNewUpdates = json.exists() && checkForNewUpdates(json, jsonNew)
+                                        if (hasNewUpdates) {
+                                            NotificationHelper.getInstance(context).notifyNewUpdates()
+                                        }
+                                        // Delete old file first to ensure rename succeeds
+                                        if (json.exists() && !json.delete()) {
+                                            Log.w(TAG, "Could not delete old update list")
+                                        }
+                                        if (!jsonNew.renameTo(json)) {
+                                            throw IOException("Could not rename downloaded file to ${json.absolutePath}")
+                                        }
+                                        PreferenceManager.getDefaultSharedPreferences(context).edit {
+                                            putLong(
+                                                Constants.LAST_UPDATE_CHECK,
+                                                System.currentTimeMillis()
+                                            )
+                                        }
+                                        if (continuation.isActive) {
+                                            continuation.resume(kotlin.Result.success(json))
+                                        }
+                                    } catch (e: Exception) {
+                                        Log.e(TAG, "Could not process updates list", e)
+                                        if (continuation.isActive) {
+                                            continuation.resume(kotlin.Result.failure(e))
+                                        }
+                                    }
+                                }
+
+                                override fun onFailure(cancelled: Boolean) {
+                                    if (cancelled) {
+                                        Log.d(TAG, "Download cancelled")
+                                        // Worker was cancelled
+                                    } else {
+                                        Log.e(TAG, "Download failed")
+                                        if (continuation.isActive) {
+                                            continuation.resume(kotlin.Result.failure(IOException("Download failed")))
+                                        }
+                                    }
+                                }
+                            })
+                            .build()
+
+                        client.start()
+
+                        continuation.invokeOnCancellation {
+                            client.cancel()
+                        }
+                    } catch (e: IOException) {
+                        Log.e(TAG, "Could not download updates list, retrying.", e)
+                        if (continuation.isActive) {
+                            continuation.resume(kotlin.Result.failure(e))
+                        }
+                    }
+                }
+            } finally {
+                jsonNew.delete()
+            }
+        }
 
         /**
-         * Update check intervals.
+         * Compares two JSON formatted update list files.
+         *
+         * @param oldJson Old update list
+         * @param newJson New update list
+         * @return True if newJson has at least one compatible update not in oldJson
          */
-
+        private fun checkForNewUpdates(oldJson: File, newJson: File): Boolean {
+            val oldList = Utils.parseJson(oldJson, true)
+            val newList = Utils.parseJson(newJson, true)
+            val oldIds = oldList.map { it.downloadId }.toSet()
+            return newList.any { it.downloadId !in oldIds }
+        }
 
         private fun getUpdateCheckUrl(context: Context): String {
             val incrementalVersion = DeviceInfoUtils.buildVersionIncremental
@@ -168,17 +161,38 @@ class UpdatesCheckWorker(
                 .replace("{incr}", incrementalVersion)
         }
 
+        companion object {
+            private const val TAG = "UpdateChecker"
+        }
+    }
+
+    companion object {
+        private const val KEY_IMMEDIATE_CHECK = "immediate_check"
+        private const val RETRY_DELAY_HOURS = 2L
+
+        const val WORK_NAME = "updates_check"
+        const val WORK_NAME_IMMEDIATE = "updates_check_immediate"
+
+        private val CONSTRAINTS = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        /**
+         * Update check intervals.
+         */
+
+
         private fun getCheckInterval(context: Context): Long {
             val prefs = PreferenceManager.getDefaultSharedPreferences(context)
             val defValue =
                 context.resources.getInteger(R.integer.def_periodic_check_interval).toString()
-            val value = prefs.getString(Preferences.CheckInterval.KEY_INTERVAL, defValue)
-            return Preferences.CheckInterval.fromValue(value).milliseconds
+            val value = prefs.getString(Constants.CheckInterval.KEY_INTERVAL, defValue)
+            return Constants.CheckInterval.fromValue(value).milliseconds
         }
 
         private fun isPeriodicCheckEnabled(context: Context): Boolean {
             val prefs = PreferenceManager.getDefaultSharedPreferences(context)
-            return prefs.getBoolean(Preferences.CheckInterval.KEY_ENABLED, true)
+            return prefs.getBoolean(Constants.CheckInterval.KEY_ENABLED, true)
         }
 
         @JvmStatic
@@ -236,7 +250,7 @@ class UpdatesCheckWorker(
 
             WorkManager.getInstance(context).enqueueUniqueWork(
                 WORK_NAME_IMMEDIATE,
-                ExistingWorkPolicy.KEEP,
+                ExistingWorkPolicy.REPLACE,
                 workRequest
             )
         }
