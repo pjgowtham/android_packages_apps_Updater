@@ -123,6 +123,11 @@
     <string name="action_install">Install</string>
     <string name="action_info">Info</string>
     <string name="action_delete">Delete</string>
+    <string name="action_cancel">Cancel</string>
+
+    <string name="cancel_button">Cancel</string>
+    <string name="confirm_cancel_dialog_title">Cancel download</string>
+    <string name="confirm_cancel_dialog_message">Cancel the download and delete the file?</string>
 
     <string name="confirm_delete_dialog_title">Delete file</string>
     <string name="confirm_delete_dialog_message">Delete the selected update file?</string>
@@ -131,7 +136,7 @@
     <string name="apply_update_dialog_message">You are about to install <xliff:g id="update_name">%1$s</xliff:g>.\n\nIf you press <xliff:g id="ok">%2$s</xliff:g>, the device will restart itself in recovery mode to install the update.\n\nNote: This feature requires a compatible Recovery or updates will need to be installed manually.</string>
     <string name="apply_update_dialog_message_ab">You are about to install <xliff:g id="update_name">%1$s</xliff:g>.\n\nIf you press <xliff:g id="ok">%2$s</xliff:g>, the device will begin installing in the background.\n\nOnce completed, you will be prompted to reboot.</string>
 
-    <string name="cancel_installation_dialog_message">Cancel the installation?</string>
+    <string name="cancel_installation_dialog_message">Cancel the system update?</string>
 
     <string name="label_download_url">Download URL</string>
 

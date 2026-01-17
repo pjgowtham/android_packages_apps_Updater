@@ -69,6 +69,7 @@ public class UpdaterService extends Service {
 
     public static final int DOWNLOAD_RESUME = 0;
     public static final int DOWNLOAD_PAUSE = 1;
+    public static final int DOWNLOAD_CANCEL = 2;
 
     private static final int NOTIFICATION_ID = 10;
 
@@ -194,6 +195,8 @@ public class UpdaterService extends Service {
                 mUpdaterController.resumeDownload(downloadId);
             } else if (action == DOWNLOAD_PAUSE) {
                 mUpdaterController.pauseDownload(downloadId);
+            } else if (action == DOWNLOAD_CANCEL) {
+                mUpdaterController.cancelDownload(downloadId);
             } else {
                 Log.e(TAG, "Unknown download action");
             }
@@ -297,6 +300,9 @@ public class UpdaterService extends Service {
                 mNotificationBuilder.addAction(android.R.drawable.ic_media_pause,
                         getString(R.string.pause_button),
                         getPausePendingIntent(update.getDownloadId()));
+                mNotificationBuilder.addAction(android.R.drawable.ic_delete,
+                        getString(R.string.cancel_button),
+                        getCancelPendingIntent(update.getDownloadId()));
                 mNotificationBuilder.setTicker(text);
                 mNotificationBuilder.setOngoing(true);
                 mNotificationBuilder.setAutoCancel(false);
@@ -315,6 +321,9 @@ public class UpdaterService extends Service {
                 mNotificationBuilder.addAction(android.R.drawable.ic_media_play,
                         getString(R.string.resume_button),
                         getResumePendingIntent(update.getDownloadId()));
+                mNotificationBuilder.addAction(android.R.drawable.ic_delete,
+                        getString(R.string.cancel_button),
+                        getCancelPendingIntent(update.getDownloadId()));
                 mNotificationBuilder.setTicker(text);
                 mNotificationBuilder.setOngoing(false);
                 mNotificationBuilder.setAutoCancel(false);
@@ -335,6 +344,9 @@ public class UpdaterService extends Service {
                 mNotificationBuilder.addAction(android.R.drawable.ic_media_play,
                         getString(R.string.resume_button),
                         getResumePendingIntent(update.getDownloadId()));
+                mNotificationBuilder.addAction(android.R.drawable.ic_delete,
+                        getString(R.string.cancel_button),
+                        getCancelPendingIntent(update.getDownloadId()));
                 mNotificationBuilder.setTicker(text);
                 mNotificationBuilder.setOngoing(false);
                 mNotificationBuilder.setAutoCancel(false);
@@ -392,11 +404,7 @@ public class UpdaterService extends Service {
                         getString(R.string.dialog_prepare_zip_message) :
                         getString(R.string.installing_update);
                 mNotificationStyle.bigText(text);
-                if (ABUpdateInstaller.isInstallingUpdate(this)) {
-                    mNotificationBuilder.addAction(android.R.drawable.ic_media_pause,
-                            getString(R.string.suspend_button),
-                            getSuspendInstallationPendingIntent());
-                }
+                // No notification buttons during installation
                 mNotificationBuilder.setTicker(text);
                 mNotificationBuilder.setOngoing(true);
                 mNotificationBuilder.setAutoCancel(false);
@@ -452,9 +460,7 @@ public class UpdaterService extends Service {
                 mNotificationStyle.bigText(text);
                 mNotificationBuilder.setStyle(mNotificationStyle);
                 mNotificationBuilder.setSmallIcon(R.drawable.ic_pause);
-                mNotificationBuilder.addAction(android.R.drawable.ic_media_play,
-                        getString(R.string.resume_button),
-                        getResumeInstallationPendingIntent());
+                // No notification buttons - user must open app to resume
                 mNotificationBuilder.setTicker(text);
                 mNotificationBuilder.setOngoing(true);
                 mNotificationBuilder.setAutoCancel(false);
@@ -520,6 +526,15 @@ public class UpdaterService extends Service {
         intent.putExtra(EXTRA_DOWNLOAD_ID, downloadId);
         intent.putExtra(EXTRA_DOWNLOAD_CONTROL, DOWNLOAD_PAUSE);
         return PendingIntent.getService(this, 0, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    private PendingIntent getCancelPendingIntent(String downloadId) {
+        final Intent intent = new Intent(this, UpdaterService.class);
+        intent.setAction(ACTION_DOWNLOAD_CONTROL);
+        intent.putExtra(EXTRA_DOWNLOAD_ID, downloadId);
+        intent.putExtra(EXTRA_DOWNLOAD_CONTROL, DOWNLOAD_CANCEL);
+        return PendingIntent.getService(this, 1, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 

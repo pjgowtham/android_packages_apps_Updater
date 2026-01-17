@@ -488,6 +488,39 @@ public class UpdaterController {
         }
     }
 
+    public void cancelDownload(String downloadId) {
+        Log.d(TAG, "Cancelling download: " + downloadId);
+        if (!mDownloads.containsKey(downloadId)) {
+            return;
+        }
+        DownloadEntry entry = mDownloads.get(downloadId);
+        if (entry == null) {
+            return;
+        }
+        // Pause the download if it's active
+        if (isDownloading(downloadId)) {
+            entry.mDownloadClient.cancel();
+            removeDownloadClient(entry);
+        }
+        Update update = entry.mUpdate;
+        update.setStatus(UpdateStatus.DELETED);
+        update.setProgress(0);
+        update.setEta(0);
+        update.setSpeed(0);
+        update.setPersistentStatus(UpdateStatus.Persistent.UNKNOWN);
+        deleteUpdateAsync(update);
+
+        final boolean isLocalUpdate = Update.LOCAL_ID.equals(downloadId);
+        if (!isLocalUpdate && !update.getAvailableOnline()) {
+            Log.d(TAG, "Download no longer available online, removing");
+            mDownloads.remove(downloadId);
+            notifyUpdateDelete(downloadId);
+        } else {
+            notifyUpdateChange(downloadId);
+        }
+        tryReleaseWakelock();
+    }
+
     public List<UpdateInfo> getUpdates() {
         List<UpdateInfo> updates = new ArrayList<>();
         for (DownloadEntry entry : mDownloads.values()) {
