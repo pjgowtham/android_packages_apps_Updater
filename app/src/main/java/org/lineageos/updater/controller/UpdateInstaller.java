@@ -18,11 +18,11 @@ package org.lineageos.updater.controller;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.SystemClock;
-import android.os.SystemProperties;
 import android.util.Log;
 
 import androidx.preference.PreferenceManager;
 
+import org.lineageos.updater.deviceinfo.DeviceInfoUtils;
 import org.lineageos.updater.misc.Constants;
 import org.lineageos.updater.misc.FileUtils;
 import org.lineageos.updater.misc.Utils;
@@ -78,7 +78,7 @@ class UpdateInstaller {
 
         UpdateInfo update = mUpdaterController.getUpdate(downloadId);
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(mContext);
-        long buildTimestamp = SystemProperties.getLong(Constants.PROP_BUILD_DATE, 0);
+        long buildTimestamp = DeviceInfoUtils.getBuildDateTimestamp();
         long lastBuildTimestamp = preferences.getLong(Constants.PREF_INSTALL_OLD_TIMESTAMP,
                 buildTimestamp);
         boolean isReinstalling = buildTimestamp == lastBuildTimestamp;
