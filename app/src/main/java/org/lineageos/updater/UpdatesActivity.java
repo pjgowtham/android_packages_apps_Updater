@@ -546,23 +546,20 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
     private void updateLastCheckedString() {
         final SharedPreferences preferences =
                 PreferenceManager.getDefaultSharedPreferences(this);
-        long lastCheck = preferences.getLong(Constants.PREF_LAST_UPDATE_CHECK, -1) / 1000;
-        String lastCheckString = getString(R.string.header_last_updates_check,
-                StringGenerator.getDateLocalized(this, DateFormat.LONG, lastCheck),
-                StringGenerator.getTimeLocalized(this, lastCheck));
-        TextView headerLastCheck = findViewById(R.id.header_last_check);
-        headerLastCheck.setText(lastCheckString);
+        long lastCheckMillis = preferences.getLong(Constants.PREF_LAST_UPDATE_CHECK, -1);
+        long lastCheckSeconds = lastCheckMillis / 1000;
 
-        long now = System.currentTimeMillis() / 1000;
-        String nowString = getString(R.string.header_last_updates_check,
-                StringGenerator.getDateLocalized(this, DateFormat.LONG, now),
-                StringGenerator.getTimeLocalized(this, now));
+        TextView lastCheckDateView = findViewById(R.id.header_last_check_date);
+        TextView lastCheckTimeView = findViewById(R.id.header_last_check_time);
 
-        if (nowString.equals(lastCheckString)) {
-            headerLastCheck.setTextColor(getColor(settingslib_colorBackgroundLevel_low));
-        } else {
-            headerLastCheck.setTextColor(getColor(settingslib_colorBackgroundLevel_medium));
+        boolean isCheckToday = DateUtils.isToday(lastCheckMillis);
+
+        if (!isCheckToday) {
+            lastCheckDateView.setText(StringGenerator.getDateLocalized(this, DateFormat.MEDIUM, lastCheckSeconds));
         }
+
+        lastCheckDateView.setVisibility(isCheckToday ? View.GONE : View.VISIBLE);
+        lastCheckTimeView.setText(StringGenerator.getTimeLocalized(this, lastCheckSeconds));
     }
 
     private void setupFilterChips() {
@@ -670,7 +667,7 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
 
         TextView headerBuildDate = findViewById(R.id.header_build_date);
         headerBuildDate.setText(StringGenerator.getDateLocalizedUTC(this,
-                DateFormat.LONG, DeviceInfoUtils.getBuildDateTimestamp()));
+                DateFormat.MEDIUM, DeviceInfoUtils.getBuildDateTimestamp()));
 
         TextView headerSecurityPatch = findViewById(R.id.header_security_patch_level);
         headerSecurityPatch.setText(getString(R.string.header_android_security_update,
