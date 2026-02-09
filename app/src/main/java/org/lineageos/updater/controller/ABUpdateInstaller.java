@@ -234,6 +234,51 @@ class ABUpdateInstaller {
 
     }
 
+    public void installStreaming(String downloadId, String streamUrl,
+            long payloadOffset, long payloadSize, String[] headerKeyValuePairs) {
+        if (isInstallingUpdate(mContext)) {
+            Log.e(TAG, "Already installing an update");
+            return;
+        }
+
+        mDownloadId = downloadId;
+
+        if (!mBound) {
+            mBound = mUpdateEngine.bind(mUpdateEngineCallback);
+            if (!mBound) {
+                Log.e(TAG, "Could not bind");
+                mUpdaterController.getActualUpdate(downloadId)
+                        .setStatus(UpdateStatus.INSTALLATION_FAILED);
+                mUpdaterController.notifyUpdateChange(downloadId);
+                return;
+            }
+        }
+
+        boolean enableABPerfMode = PreferenceManager.getDefaultSharedPreferences(mContext)
+                .getBoolean(Constants.PREF_AB_PERF_MODE, false);
+        mUpdateEngine.setPerformanceMode(enableABPerfMode);
+
+        try {
+            mUpdateEngine.applyPayload(streamUrl, payloadOffset, payloadSize,
+                    headerKeyValuePairs);
+        } catch (ServiceSpecificException e) {
+            if (e.errorCode == 66 /* kUpdateAlreadyInstalled */) {
+                installationDone(true);
+                mUpdaterController.getActualUpdate(mDownloadId).setStatus(UpdateStatus.INSTALLED);
+                mUpdaterController.notifyUpdateChange(mDownloadId);
+                return;
+            }
+            throw e;
+        }
+
+        mUpdaterController.getActualUpdate(mDownloadId).setStatus(UpdateStatus.INSTALLING);
+        mUpdaterController.notifyUpdateChange(mDownloadId);
+
+        PreferenceManager.getDefaultSharedPreferences(mContext).edit()
+                .putString(PREF_INSTALLING_AB_ID, mDownloadId)
+                .apply();
+    }
+
     public void reconnect() {
         if (!isInstallingUpdate(mContext)) {
             Log.e(TAG, "reconnect: Not installing any update");
