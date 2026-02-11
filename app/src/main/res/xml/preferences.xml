@@ -46,6 +46,13 @@
             app:iconSpaceReserved="false" />
 
         <SwitchPreferenceCompat
+            android:key="ab_streaming_mode"
+            android:title="@string/menu_ab_streaming_mode"
+            android:summary="@string/menu_ab_streaming_mode_summary"
+            android:defaultValue="false"
+            app:iconSpaceReserved="false" />
+
+        <SwitchPreferenceCompat
             android:key="ab_perf_mode"
             android:title="@string/menu_ab_perf_mode"
             android:summary="@string/menu_ab_perf_mode_summary"
