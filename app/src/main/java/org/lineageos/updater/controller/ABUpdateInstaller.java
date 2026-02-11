@@ -182,7 +182,7 @@ class ABUpdateInstaller {
                  InputStreamReader isr = new InputStreamReader(is);
                  BufferedReader br = new BufferedReader(isr)) {
                 List<String> lines = new ArrayList<>();
-                for (String line; (line = br.readLine()) != null;) {
+                for (String line; (line = br.readLine()) != null; ) {
                     lines.add(line);
                 }
                 headerKeyValuePairs = new String[lines.size()];
@@ -196,6 +196,24 @@ class ABUpdateInstaller {
             mUpdaterController.notifyUpdateChange(mDownloadId);
             return;
         }
+
+        String zipFileUri = "file://" + file.getAbsolutePath();
+        applyPayload(downloadId, zipFileUri, offset, 0, headerKeyValuePairs);
+    }
+
+    public void installStreaming(String downloadId, String url,
+                                 long payloadOffset, long payloadSize, String[] headerKeyValuePairs) {
+        if (isInstallingUpdate(mContext)) {
+            Log.e(TAG, "Already installing an update");
+            return;
+        }
+
+        applyPayload(downloadId, url, payloadOffset, payloadSize, headerKeyValuePairs);
+    }
+
+    private void applyPayload(String downloadId, String url, long offset, long size,
+                              String[] headerKeyValuePairs) {
+        mDownloadId = downloadId;
 
         if (!mBound) {
             mBound = mUpdateEngine.bind(mUpdateEngineCallback);
@@ -212,9 +230,8 @@ class ABUpdateInstaller {
                 .getBoolean(Constants.PREF_AB_PERF_MODE, false);
         mUpdateEngine.setPerformanceMode(enableABPerfMode);
 
-        String zipFileUri = "file://" + file.getAbsolutePath();
         try {
-            mUpdateEngine.applyPayload(zipFileUri, offset, 0, headerKeyValuePairs);
+            mUpdateEngine.applyPayload(url, offset, size, headerKeyValuePairs);
         } catch (ServiceSpecificException e) {
             if (e.errorCode == 66 /* kUpdateAlreadyInstalled */) {
                 installationDone(true);
@@ -231,7 +248,6 @@ class ABUpdateInstaller {
         PreferenceManager.getDefaultSharedPreferences(mContext).edit()
                 .putString(PREF_INSTALLING_AB_ID, mDownloadId)
                 .apply();
-
     }
 
     public void reconnect() {

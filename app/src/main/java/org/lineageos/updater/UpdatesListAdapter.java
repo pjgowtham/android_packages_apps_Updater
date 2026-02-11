@@ -26,7 +26,6 @@ import android.text.format.Formatter;
 import android.text.method.LinkMovementMethod;
 import android.text.util.Linkify;
 import android.util.Log;
-import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -45,6 +44,8 @@ import androidx.appcompat.view.menu.MenuPopupHelper;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.android.settingslib.utils.ColorUtil;
 
 import com.google.android.material.snackbar.Snackbar;
 
@@ -94,6 +95,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
         CANCEL,
         SUSPEND_INSTALLATION,
         RESUME_INSTALLATION,
+        STREAM_INSTALL,
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
@@ -129,10 +131,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
 
     public UpdatesListAdapter(UpdatesListActivity activity) {
         mActivity = activity;
-
-        TypedValue tv = new TypedValue();
-        mActivity.getTheme().resolveAttribute(android.R.attr.disabledAlpha, tv, true);
-        mAlphaDisabledValue = tv.getFloat();
+        mAlphaDisabledValue = ColorUtil.getDisabledAlpha(mActivity);
     }
 
     @NonNull
@@ -208,8 +207,8 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
         } else {
             setButtonAction(viewHolder.mAction, Action.RESUME, downloadId,
                     Utils.isNetworkAvailable(mActivity));
-            String downloaded = Formatter.formatShortFileSize(mActivity,
-                    update.getFile().length());
+            long downloadedBytes = update.getFile() != null ? update.getFile().length() : 0;
+            String downloaded = Formatter.formatShortFileSize(mActivity, downloadedBytes);
             String total = Formatter.formatShortFileSize(mActivity, update.getFileSize());
             String percentage = NumberFormat.getPercentInstance().format(
                     update.getProgress() / 100.f);
@@ -249,6 +248,13 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
         } else if (!Utils.canInstall(update)) {
             viewHolder.mMenu.setOnClickListener(getClickListener(update, false, viewHolder.mMenu));
             setButtonAction(viewHolder.mAction, Action.INFO, downloadId, !isBusy());
+        } else if (Utils.isStreamingEnabled(mActivity)) {
+            viewHolder.mMenu.setOnClickListener(getClickListener(update, false, viewHolder.mMenu));
+            boolean canStream = !mUpdaterController.isVerifyingUpdate(downloadId)
+                    && !mUpdaterController.isInstallingUpdate(downloadId)
+                    && Utils.isNetworkAvailable(mActivity)
+                    && update.getAvailableOnline();
+            setButtonAction(viewHolder.mAction, Action.STREAM_INSTALL, downloadId, canStream);
         } else {
             viewHolder.mMenu.setOnClickListener(getClickListener(update, false, viewHolder.mMenu));
             boolean canDownload = !mUpdaterController.isVerifyingUpdate(downloadId)
@@ -286,7 +292,8 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
         boolean activeLayout;
         switch (update.getPersistentStatus()) {
             case UpdateStatus.Persistent.UNKNOWN:
-                activeLayout = update.getStatus() == UpdateStatus.STARTING;
+                activeLayout = update.getStatus() == UpdateStatus.STARTING
+                        || update.getStatus() == UpdateStatus.INSTALLING;
                 break;
             case UpdateStatus.Persistent.VERIFIED:
                 activeLayout = update.getStatus() == UpdateStatus.INSTALLING
@@ -491,6 +498,24 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
                 } : null;
             }
             break;
+            case STREAM_INSTALL: {
+                button.setText(R.string.action_install);
+                button.setEnabled(enabled);
+                UpdateInfo update = mUpdaterController.getUpdate(downloadId);
+                final boolean canInstall = Utils.canInstall(update);
+                clickListener = enabled ? view -> {
+                    if (canInstall) {
+                        AlertDialog.Builder streamDialog = getStreamInstallDialog(downloadId);
+                        if (streamDialog != null) {
+                            streamDialog.show();
+                        }
+                    } else {
+                        mActivity.showSnackbar(R.string.snack_update_not_installable,
+                                Snackbar.LENGTH_LONG);
+                    }
+                } : null;
+            }
+            break;
             default:
                 clickListener = null;
         }
@@ -535,7 +560,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
         return view -> startActionMode(update, canDelete, anchor);
     }
 
-    private AlertDialog.Builder getInstallDialog(final String downloadId) {
+    private AlertDialog.Builder getPreInstallBlockingDialog() {
         if (!isBatteryLevelOk()) {
             Resources resources = mActivity.getResources();
             String message = resources.getString(R.string.dialog_battery_low_message_pct,
@@ -551,6 +576,14 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
                     .setTitle(R.string.dialog_scratch_mounted_title)
                     .setMessage(R.string.dialog_scratch_mounted_message)
                     .setPositiveButton(android.R.string.ok, null);
+        }
+        return null;
+    }
+
+    private AlertDialog.Builder getInstallDialog(final String downloadId) {
+        AlertDialog.Builder blockingDialog = getPreInstallBlockingDialog();
+        if (blockingDialog != null) {
+            return blockingDialog;
         }
         UpdateInfo update = mUpdaterController.getUpdate(downloadId);
         int resId;
@@ -576,6 +609,29 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
                 .setPositiveButton(android.R.string.ok,
                         (dialog, which) -> {
                             Utils.triggerUpdate(mActivity, downloadId);
+                            maybeShowInfoDialog();
+                        })
+                .setNegativeButton(android.R.string.cancel, null);
+    }
+
+    private AlertDialog.Builder getStreamInstallDialog(final String downloadId) {
+        AlertDialog.Builder blockingDialog = getPreInstallBlockingDialog();
+        if (blockingDialog != null) {
+            return blockingDialog;
+        }
+        UpdateInfo update = mUpdaterController.getUpdate(downloadId);
+        String buildDate = StringGenerator.getDateLocalizedUTC(mActivity,
+                DateFormat.MEDIUM, update.getTimestamp());
+        String buildInfoText = mActivity.getString(R.string.list_build_version_date,
+                update.getVersion(), buildDate);
+        return new AlertDialog.Builder(mActivity)
+                .setTitle(R.string.apply_update_dialog_title)
+                .setMessage(mActivity.getString(R.string.apply_update_dialog_message_streaming,
+                        buildInfoText,
+                        mActivity.getString(android.R.string.ok)))
+                .setPositiveButton(android.R.string.ok,
+                        (dialog, which) -> {
+                            Utils.triggerStreamingUpdate(mActivity, downloadId);
                             maybeShowInfoDialog();
                         })
                 .setNegativeButton(android.R.string.cancel, null);
@@ -627,7 +683,8 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
         MenuBuilder menu = (MenuBuilder) popupMenu.getMenu();
         menu.findItem(R.id.menu_delete_action).setVisible(shouldShowDelete);
         menu.findItem(R.id.menu_copy_url).setVisible(update.getAvailableOnline());
-        menu.findItem(R.id.menu_export_update).setVisible(isVerified);
+        menu.findItem(R.id.menu_export_update).setVisible(
+                isVerified && update.getFile().exists());
 
         popupMenu.setOnMenuItemClickListener(item -> {
             int itemId = item.getItemId();
