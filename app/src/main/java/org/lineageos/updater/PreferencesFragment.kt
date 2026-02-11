@@ -25,6 +25,8 @@ class PreferencesFragment : SettingsBasePreferenceFragment() {
 
         setupPeriodicCheckSwitch()
         setupPeriodicCheckInterval()
+        setupStreamingMode()
+        setupAutoDelete()
         setupABPerfMode()
         setupUpdateRecovery()
     }
@@ -81,6 +83,18 @@ class PreferencesFragment : SettingsBasePreferenceFragment() {
             )
         } else {
             getString(R.string.menu_auto_updates_check_summary)
+        }
+    }
+
+    private fun setupAutoDelete() {
+        findPreference<SwitchPreferenceCompat>(Constants.PREF_AUTO_DELETE_UPDATES)?.apply {
+            isVisible = !DeviceInfoUtils.isABDevice
+        }
+    }
+
+    private fun setupStreamingMode() {
+        findPreference<SwitchPreferenceCompat>(Constants.PREF_AB_STREAMING_MODE)?.apply {
+            isVisible = DeviceInfoUtils.isABDevice
         }
     }
 

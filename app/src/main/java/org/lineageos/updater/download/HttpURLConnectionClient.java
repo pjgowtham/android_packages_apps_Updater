@@ -25,12 +25,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.Comparator;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.PriorityQueue;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class HttpURLConnectionClient implements DownloadClient {
 
@@ -186,51 +182,26 @@ public class HttpURLConnectionClient implements DownloadClient {
         private void handleDuplicateLinks() throws IOException {
             String protocol = mClient.getURL().getProtocol();
 
-            class DuplicateLink {
-                private final String mUrl;
-                private final int mPriority;
-                private DuplicateLink(String url, int priority) {
-                    mUrl = url;
-                    mPriority = priority;
-                }
+            List<HttpUtils.MirrorLink> mirrors =
+                    HttpUtils.parseDuplicateLinks(mClient.getHeaderFields());
+
+            List<String> urlsToTry = new ArrayList<>();
+            String locationUrl = mClient.getHeaderField("Location");
+            if (locationUrl != null) {
+                urlsToTry.add(locationUrl);
+            }
+            for (HttpUtils.MirrorLink mirror : mirrors) {
+                urlsToTry.add(mirror.getUrl());
             }
 
-            PriorityQueue<DuplicateLink> duplicates = null;
-
-            for (Map.Entry<String, List<String>> entry : mClient.getHeaderFields().entrySet()) {
-                if ("Link".equalsIgnoreCase((entry.getKey()))) {
-                    duplicates = new PriorityQueue<>(entry.getValue().size(),
-                            Comparator.comparingInt(d -> d.mPriority));
-
-                    // https://tools.ietf.org/html/rfc6249
-                    // https://tools.ietf.org/html/rfc5988#section-5
-                    String regex = "(?i)<(.+)>\\s*;\\s*rel=duplicate(?:.*pri=([0-9]+).*|.*)?";
-                    Pattern pattern = Pattern.compile(regex);
-                    for (String field : entry.getValue()) {
-                        Matcher matcher = pattern.matcher(field);
-                        if (matcher.matches()) {
-                            String url = matcher.group(1);
-                            String pri = matcher.group(2);
-                            int priority = pri != null ? Integer.parseInt(pri) : 999999;
-                            duplicates.add(new DuplicateLink(url, priority));
-                            Log.d(TAG, "Adding duplicate link " + url);
-                        } else {
-                            Log.d(TAG, "Ignoring link " + field);
-                        }
-                    }
-                }
-            }
-
-            String newUrl = mClient.getHeaderField("Location");
-            for (;;) {
+            for (int i = 0; i < urlsToTry.size(); i++) {
+                String candidate = urlsToTry.get(i);
                 try {
-                    URL url = new URL(newUrl);
+                    URL url = new URL(candidate);
                     if (!url.getProtocol().equals(protocol)) {
-                        // If we hadn't handled duplicate links, we wouldn't have
-                        // used this url.
                         throw new IOException("Protocol changes are not allowed");
                     }
-                    Log.d(TAG, "Downloading from " + newUrl);
+                    Log.d(TAG, "Downloading from " + candidate);
                     changeClientUrl(url);
                     mClient.setConnectTimeout(5000);
                     mClient.connect();
@@ -239,13 +210,8 @@ public class HttpURLConnectionClient implements DownloadClient {
                     }
                     return;
                 } catch (IOException e) {
-                    if (duplicates != null && !duplicates.isEmpty()) {
-                        DuplicateLink link = duplicates.poll();
-                        if (link != null) {
-                            duplicates.remove(link);
-                            newUrl = link.mUrl;
-                            Log.e(TAG, "Using duplicate link " + link.mUrl, e);
-                        }
+                    if (i < urlsToTry.size() - 1) {
+                        Log.e(TAG, "Using duplicate link " + urlsToTry.get(i + 1), e);
                     } else {
                         throw e;
                     }
