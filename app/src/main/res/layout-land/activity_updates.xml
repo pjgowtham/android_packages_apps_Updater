@@ -4,67 +4,39 @@
      SPDX-License-Identifier: Apache-2.0
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/main_container"
-    style="@style/SettingsLibEntityHeader"
+    android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:baselineAligned="false"
-    android:orientation="horizontal"
-    app:layout_behavior="@string/appbar_scrolling_view_behavior">
+    android:orientation="horizontal">
 
-    <androidx.core.widget.NestedScrollView
-        android:layout_width="0dp"
-        android:layout_height="match_parent"
-        android:layout_weight="1"
-        android:fillViewport="true">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="vertical">
-
-            <include
-                layout="@layout/updater_header"
-                android:nextFocusRight="@+id/filter_scroll_view" />
-
-            <include
-                android:id="@+id/network_warning_card"
-                layout="@layout/settingslib_expressive_preference_card"
-                android:nextFocusRight="@+id/filter_scroll_view"
-                android:visibility="gone" />
-
-        </LinearLayout>
-    </androidx.core.widget.NestedScrollView>
-
-    <Space
-        android:layout_width="@dimen/settingslib_expressive_space_small1"
-        android:layout_height="match_parent" />
-
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <FrameLayout
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_weight="1">
 
-        <include
-            layout="@layout/updater_filter_chips"
-            app:layout_constraintTop_toTopOf="parent" />
+        <include layout="@layout/header" />
+    </FrameLayout>
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recycler_view"
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <include
+            android:id="@+id/network_warning_card"
+            layout="@layout/settingslib_expressive_preference_card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone" />
+
+        <include layout="@layout/check_updates_content" />
+
+        <FrameLayout
+            android:id="@+id/updates_fragment_container"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:clipToPadding="false"
-            android:descendantFocusability="afterDescendants"
-            android:focusable="true"
-            android:nextFocusLeft="@+id/show_changelog_button"
-            android:nextFocusUp="@+id/filter_scroll_view"
-            android:paddingBottom="@dimen/settingslib_expressive_space_small1"
-            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/filter_scroll_view"
-            tools:itemCount="5"
-            tools:listitem="@layout/update_item_view"
-            tools:progress="65" />
-    </androidx.constraintlayout.widget.ConstraintLayout>
+            android:layout_weight="1" />
+    </LinearLayout>
+
 </LinearLayout>

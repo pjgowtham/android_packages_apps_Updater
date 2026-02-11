@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <dimen name="header_corner_radius_bottom">24dp</dimen>
+    <dimen name="header_space_horizontal">@dimen/settingslib_expressive_space_large3</dimen>
+    <dimen name="header_space_vertical">@dimen/settingslib_expressive_space_medium2</dimen>
+</resources>

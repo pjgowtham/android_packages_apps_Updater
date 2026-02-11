@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    style="@style/SettingsLibEntityHeader"
+    android:orientation="vertical"
+    android:layout_marginHorizontal="@dimen/header_space_horizontal"
+    android:layout_marginVertical="@dimen/header_space_vertical">
+
+    <FrameLayout
+        style="@style/SettingsLibEntityHeaderContent"
+        android:background="@drawable/header_bg_top"
+        android:foreground="@drawable/header_pattern_top"
+        android:foregroundGravity="fill_horizontal|top"
+        android:clipToOutline="true"
+        android:outlineProvider="background">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="@dimen/settingslib_expressive_space_small3"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:layout_width="60dp"
+                android:layout_height="24dp"
+                android:baselineAlignBottom="true"
+                android:importantForAccessibility="no"
+                android:scaleType="fitCenter"
+                android:src="@drawable/lineage_mark_tight"
+                app:tint="?attr/colorPrimary" />
+
+            <TextView
+                android:id="@+id/header_brand_version_large"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom"
+                android:layout_marginStart="@dimen/settingslib_expressive_space_extrasmall5"
+                android:fontFamily="sans-serif-light"
+                android:includeFontPadding="false"
+                android:textColor="@android:color/white"
+                android:textSize="@dimen/settingslib_collapsing_toolbar_expanded_title_size"
+                tools:ignore="SpUsage"
+                tools:text="23.2" />
+
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/header_build_date_collapsed"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:alpha="0"
+                android:textColor="@android:color/white"
+                android:textSize="14sp"
+                tools:text="Jan 25" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/header_info_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:layout_marginVertical="@dimen/header_corner_radius_bottom"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="@dimen/settingslib_expressive_space_small1"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        style="@style/TextAppearance.EntityHeaderSummary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/brand_name"
+                        android:textSize="13sp"
+                        android:textColor="@android:color/white" />
+
+                    <Space
+                        android:layout_width="4dp"
+                        android:layout_height="wrap_content" />
+
+                    <TextView
+                        android:id="@+id/header_build_version"
+                        style="@style/TextAppearance.EntityHeaderSummary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="13sp"
+                        android:textColor="@android:color/white"
+                        tools:text="23.2" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/header_android_version"
+                    style="@style/TextAppearance.EntityHeaderSummary"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:textColor="@android:color/white"
+                    tools:text="Android 16" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="bottom"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/TextAppearance.EntityHeaderSummary"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/build_date"
+                    android:textSize="13sp"
+                    android:textColor="@android:color/white" />
+
+                <TextView
+                    android:id="@+id/header_build_date"
+                    style="@style/TextAppearance.EntityHeaderSummary"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@android:color/white"
+                    tools:text="Jan 25" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/settingslib_expressive_space_small1"
+                android:layout_marginEnd="@dimen/settingslib_expressive_space_small1"
+                android:gravity="bottom"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/TextAppearance.EntityHeaderSummary"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/security_update"
+                    android:textSize="13sp"
+                    android:textColor="@android:color/white" />
+
+                <TextView
+                    android:id="@+id/header_security_patch_level"
+                    style="@style/TextAppearance.EntityHeaderSummary"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@android:color/white"
+                    tools:text="Jan 2026" />
+            </LinearLayout>
+        </LinearLayout>
+
+    </FrameLayout>
+    <include
+        android:id="@+id/header_bottom_container"
+        layout="@layout/header_bottom" />
+</LinearLayout>

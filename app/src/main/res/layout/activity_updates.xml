@@ -3,43 +3,26 @@
      SPDX-FileCopyrightText: The LineageOS Project
      SPDX-License-Identifier: Apache-2.0
 -->
-<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/main_container"
-    style="@style/SettingsLibEntityHeader"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true"
-    app:layout_behavior="@string/appbar_scrolling_view_behavior">
+    android:orientation="vertical">
 
-    <LinearLayout
+    <include layout="@layout/header" />
+    
+    <include
+        android:id="@+id/network_warning_card"
+        layout="@layout/settingslib_expressive_preference_card"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:visibility="gone" />
 
-        <include layout="@layout/updater_header" />
+    <include layout="@layout/check_updates_content" />
 
-        <include layout="@layout/updater_filter_chips" />
+    <FrameLayout
+        android:id="@+id/updates_fragment_container"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
 
-        <include
-            android:id="@+id/network_warning_card"
-            layout="@layout/settingslib_expressive_preference_card"
-            android:visibility="gone" />
-
-        <FrameLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content">
-
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/recycler_view"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:clipToPadding="false"
-                android:nestedScrollingEnabled="false"
-                android:paddingBottom="@dimen/settingslib_expressive_space_small1"
-                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-                tools:listitem="@layout/update_item_view"
-                tools:progress="65" />
-        </FrameLayout>
-    </LinearLayout>
-</androidx.core.widget.NestedScrollView>
+</LinearLayout>

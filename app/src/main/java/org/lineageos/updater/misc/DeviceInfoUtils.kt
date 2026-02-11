@@ -5,8 +5,13 @@
 
 package org.lineageos.updater.misc
 
+import android.os.Build
 import android.os.SystemProperties
+import android.text.format.DateFormat
 import com.android.settingslib.DeviceInfoUtils as SettingsLibDeviceInfoUtils
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 object DeviceInfoUtils : SettingsLibDeviceInfoUtils() {
 
@@ -24,26 +29,23 @@ object DeviceInfoUtils : SettingsLibDeviceInfoUtils() {
 
     @JvmStatic
     val buildDateTimestamp: Long
-        get() = SystemProperties.getLong(PROP_BUILD_DATE, 0)
+        get() = 1764527400L // SystemProperties.getLong(PROP_BUILD_DATE, 0)
 
     @JvmStatic
     val buildVersion: String
-        get() = SystemProperties.get(PROP_BUILD_VERSION, "")
+        get() = "23.0" // SystemProperties.get(PROP_BUILD_VERSION, "")
 
     @JvmStatic
     val buildVersionIncremental: String
-        get() = SystemProperties.get(PROP_BUILD_VERSION_INCREMENTAL, "")
+        get() = "000000" // SystemProperties.get(PROP_BUILD_VERSION_INCREMENTAL, "")
 
     @JvmStatic
     val device: String
-        get() = SystemProperties.get(
-            PROP_NEXT_DEVICE,
-            SystemProperties.get(PROP_DEVICE)
-        )
+        get() = "lemonadep" // SystemProperties.get(PROP_NEXT_DEVICE, SystemProperties.get(PROP_DEVICE))
 
     @JvmStatic
     val releaseType: String
-        get() = SystemProperties.get(PROP_RELEASE_TYPE)
+        get() = "nightly" // SystemProperties.get(PROP_RELEASE_TYPE)
 
     @JvmStatic
     val isABDevice: Boolean
@@ -65,5 +67,12 @@ object DeviceInfoUtils : SettingsLibDeviceInfoUtils() {
     @JvmStatic
     val updaterUri: String
         get() = SystemProperties.get(PROP_UPDATER_URI, "")
+
+    @JvmStatic
+    fun getSecurityPatchShort(locale: Locale = Locale.getDefault()): String {
+        val patchDate = LocalDate.parse(Build.VERSION.SECURITY_PATCH)
+        val pattern = DateFormat.getBestDateTimePattern(locale, "MMMyyyy")
+        return patchDate.format(DateTimeFormatter.ofPattern(pattern, locale))
+    }
 }
 

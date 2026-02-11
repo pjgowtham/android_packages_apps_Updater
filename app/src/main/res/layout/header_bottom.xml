@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    style="?android:attr/buttonBarStyle"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:layout_marginTop="@dimen/settingslib_expressive_space_extrasmall2"
+    android:paddingStart="@dimen/settingslib_expressive_space_extrasmall5"
+    android:paddingEnd="@dimen/settingslib_expressive_space_extrasmall5"
+    android:background="@drawable/header_bg_bottom">
+
+    <Button
+        android:id="@+id/show_changelog_button"
+        style="@style/BorderlessButton"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:textAllCaps="false"
+        android:text="@string/show_changelog"
+        android:textColor="@color/settingslib_text_color_primary" />
+
+    <Button
+        android:id="@+id/report_issue_button"
+        style="@style/BorderlessButton"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:textAllCaps="false"
+        android:text="@string/report_issues"
+        android:textColor="@color/settingslib_text_color_primary" />
+
+</LinearLayout>

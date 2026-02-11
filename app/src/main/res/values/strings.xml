@@ -26,13 +26,29 @@
     <string name="download_path" translatable="false">/data/lineageos_updates/</string>
 
     <!-- Header -->
+    <string name="brand_name">LineageOS</string>
+    <string name="build_date">Build date</string>
+    <string name="build_version">Build version</string>
+    <string name="security_update">Security update</string>
     <string name="show_changelog">Recent changes</string>
     <string name="report_issues">Report issues</string>
+
+    <string name="header_review_updates">Review updates and recent changes on</string>
+    <string name="header_download_url" translatable="false">download.lineageos.org</string>
+    <string name="header_found_bug">Found a bug? Report it with our bug report guide:</string>
 
     <!-- Filters -->
     <string name="all">All</string>
     <string name="latest">Latest</string>
     <string name="downloaded">Downloaded</string>
+
+    <!-- Update item details -->
+    <string name="see_all_updates">See all updates</string>
+    <string name="update_detail_size">Update size: <xliff:g id="size" example="1.34 GB">%1$s</xliff:g></string>
+    <string name="update_detail_android">Android version: <xliff:g id="version" example="16">%1$s</xliff:g></string>
+    <string name="update_detail_security">Security update: <xliff:g id="date" example="Jan 5, 2026">%1$s</xliff:g></string>
+    <string name="update_detail_full_install">Full install: Safe to install over any previous build</string>
+    <string name="updates_available_count"><xliff:g id="count" example="5">%1$d</xliff:g> available</string>
 
     <!-- Directory where the downloads will be exported to.
          The path is relative to the root of the external storage.-->
@@ -86,7 +102,9 @@
     <string name="reboot_to_complete_update">Reboot to complete the update</string>
 
     <string name="menu_refresh">Refresh</string>
-    <string name="menu_preferences">Preferences</string>
+    <string name="menu_preferences">System update preferences</string>
+    <string name="menu_preferences_summary">Sync, download, and install</string>
+    <string name="menu_local_update_summary">Select update file to install</string>
 
     <!-- Background sync -->
     <string name="pref_category_background_sync">Background sync</string>
@@ -139,9 +157,9 @@
 
     <string name="snack_update_not_installable">This update can\'t be installed on top of the current build.</string>
 
-    <string name="header_android_security_update">Android security update: <xliff:g id="patch" example="January 1, 1970">%1$s</xliff:g></string>
+    <string name="header_android_security_update">Security update: <xliff:g id="patch" example="January 1, 1970">%1$s</xliff:g></string>
     <string name="header_android_version">Android <xliff:g id="version" example="7.1.2">%1$s</xliff:g></string>
-    <string name="header_lineage_version"><xliff:g id="version" example="23.2">%1$s</xliff:g></string>
+    <string name="header_brand_version"><xliff:g id="version" example="23.2">%1$s</xliff:g></string>
     <string name="header_last_updates_check_label">Last checked:</string>
 
     <string name="list_build_version">LineageOS <xliff:g id="version" example="23.2">%1$s</xliff:g></string>
