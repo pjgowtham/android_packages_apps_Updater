@@ -5,7 +5,11 @@
 
 package org.lineageos.updater.misc
 
+import android.os.Build.VERSION
 import android.os.SystemProperties
+import android.text.format.DateFormat
+import java.text.SimpleDateFormat
+import java.util.Locale
 import com.android.settingslib.DeviceInfoUtils as SettingsLibDeviceInfoUtils
 
 object DeviceInfoUtils : SettingsLibDeviceInfoUtils() {
@@ -24,26 +28,23 @@ object DeviceInfoUtils : SettingsLibDeviceInfoUtils() {
 
     @JvmStatic
     val buildDateTimestamp: Long
-        get() = SystemProperties.getLong(PROP_BUILD_DATE, 0)
+        get() = 1764527400L // SystemProperties.getLong(PROP_BUILD_DATE, 0)
 
     @JvmStatic
     val buildVersion: String
-        get() = SystemProperties.get(PROP_BUILD_VERSION, "")
+        get() = "23.0" // SystemProperties.get(PROP_BUILD_VERSION, "")
 
     @JvmStatic
     val buildVersionIncremental: String
-        get() = SystemProperties.get(PROP_BUILD_VERSION_INCREMENTAL, "")
+        get() = "000000" // SystemProperties.get(PROP_BUILD_VERSION_INCREMENTAL, "")
 
     @JvmStatic
     val device: String
-        get() = SystemProperties.get(
-            PROP_NEXT_DEVICE,
-            SystemProperties.get(PROP_DEVICE)
-        )
+        get() = "lemonadep" // SystemProperties.get(PROP_NEXT_DEVICE, SystemProperties.get(PROP_DEVICE))
 
     @JvmStatic
     val releaseType: String
-        get() = SystemProperties.get(PROP_RELEASE_TYPE)
+        get() = "nightly" // SystemProperties.get(PROP_RELEASE_TYPE)
 
     @JvmStatic
     val isABDevice: Boolean
@@ -65,5 +66,23 @@ object DeviceInfoUtils : SettingsLibDeviceInfoUtils() {
     @JvmStatic
     val updaterUri: String
         get() = SystemProperties.get(PROP_UPDATER_URI, "")
+
+    @JvmStatic
+    fun getBuildDateMonthDate(): String {
+        val buildDate = buildDateTimestamp * 1000
+        return DateFormat.format(
+            DateFormat.getBestDateTimePattern(Locale.getDefault(), "MMMMd"),
+            buildDate
+        ).toString()
+    }
+
+    @JvmStatic
+    fun getSecurityPatchLevelMonthYear(): String {
+        val patch = VERSION.SECURITY_PATCH
+        val template = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        val patchDate = template.parse(patch)
+        val format = DateFormat.getBestDateTimePattern(Locale.getDefault(), "MMMMyyyy")
+        return DateFormat.format(format, patchDate).toString()
+    }
 }
 
