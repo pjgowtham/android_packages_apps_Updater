@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <Preference
+        android:key="local_updates"
+        android:title="@string/local_update_import"
+        android:summary="@string/local_update_import_summary"
+        android:icon="@drawable/ic_sim_card_download" />
+
+    <Preference
+        android:key="system_update_preferences"
+        android:title="@string/menu_preferences"
+        android:summary="@string/preferences_summary"
+        android:icon="@drawable/ic_settings_accent" />
+
+</PreferenceScreen>

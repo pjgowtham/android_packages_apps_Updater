@@ -5,7 +5,11 @@
 
 package org.lineageos.updater.misc
 
+import android.os.Build.VERSION
 import android.os.SystemProperties
+import android.text.format.DateFormat
+import java.text.SimpleDateFormat
+import java.util.Locale
 import com.android.settingslib.DeviceInfoUtils as SettingsLibDeviceInfoUtils
 
 object DeviceInfoUtils : SettingsLibDeviceInfoUtils() {
@@ -65,5 +69,23 @@ object DeviceInfoUtils : SettingsLibDeviceInfoUtils() {
     @JvmStatic
     val updaterUri: String
         get() = SystemProperties.get(PROP_UPDATER_URI, "")
+
+    @JvmStatic
+    fun getBuildDateMonthDate(): String {
+        val buildDate = buildDateTimestamp * 1000
+        return DateFormat.format(
+            DateFormat.getBestDateTimePattern(Locale.getDefault(), "MMMMd"),
+            buildDate
+        ).toString()
+    }
+
+    @JvmStatic
+    fun getSecurityPatchLevelMonthYear(): String {
+        val patch = VERSION.SECURITY_PATCH
+        val template = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        val patchDate = template.parse(patch)
+        val format = DateFormat.getBestDateTimePattern(Locale.getDefault(), "MMMMyyyy")
+        return DateFormat.format(format, patchDate).toString()
+    }
 }
 

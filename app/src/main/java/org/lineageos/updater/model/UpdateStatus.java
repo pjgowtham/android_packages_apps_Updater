@@ -36,4 +36,17 @@ public enum UpdateStatus {
         public static final int INCOMPLETE = 1;
         public static final int VERIFIED = 2;
     }
+
+    public static boolean isActive(UpdateStatus status, int persistentStatus) {
+        switch (persistentStatus) {
+            case Persistent.UNKNOWN:
+                return status == STARTING || status == INSTALLING;
+            case Persistent.VERIFIED:
+                return status == INSTALLING || status == INSTALLATION_SUSPENDED;
+            case Persistent.INCOMPLETE:
+                return true;
+            default:
+                return false;
+        }
+    }
 }
