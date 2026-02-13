@@ -6,6 +6,7 @@ import org.lineageos.generatebp.models.Module
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.lineageos.generatebp)
+    alias(libs.plugins.compose.compiler)
 }
 
 val keystorePropertiesFile = rootProject.file("keystore.properties")
@@ -44,6 +45,7 @@ android {
 
     buildFeatures {
         buildConfig = true
+        compose = true
     }
 
     compileOptions {
@@ -86,6 +88,16 @@ dependencies {
     implementation(libs.androidx.preference)
     implementation(libs.androidx.recyclerview)
     implementation(libs.material)
+
+    // Compose
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    debugImplementation(libs.androidx.compose.ui.tooling)
+
+    implementation(libs.androidx.lifecycle.runtime.compose)
 }
 
 configure<GenerateBpPluginExtension> {

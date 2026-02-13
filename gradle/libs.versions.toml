@@ -3,6 +3,10 @@ agp = "9.0.0"
 appcompat = "1.7.1"
 cardview = "1.0.0"
 core = "1.17.0"
+activity = "1.12.0-alpha08"
+compose = "1.10.0-alpha01"
+composeMaterial3 = "1.4.0-alpha17"
+kotlin = "2.1.0"
 lifecycle = "2.10.0-alpha04"
 localbroadcastmanager = "1.1.0"
 material = "1.14.0-alpha02"
@@ -17,8 +21,16 @@ androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = 
 androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycle" }
 androidx-preference = { group = "androidx.preference", name = "preference", version.ref = "preference" }
 androidx-recyclerview = { group = "androidx.recyclerview", name = "recyclerview", version.ref = "recyclerview" }
+androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activity" }
+androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "compose" }
+androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "composeMaterial3" }
+androidx-compose-ui = { group = "androidx.compose.ui", name = "ui", version.ref = "compose" }
+androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling", version.ref = "compose" }
+androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview", version.ref = "compose" }
+androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycle" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 lineageos-generatebp = { id = "org.lineageos.generatebp", version.ref = "generateBp" }
