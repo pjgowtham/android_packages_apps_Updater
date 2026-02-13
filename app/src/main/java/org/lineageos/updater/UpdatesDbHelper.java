@@ -22,11 +22,13 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.provider.BaseColumns;
 
-import org.lineageos.updater.model.Update;
+import org.lineageos.updater.model.UpdateInfo;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.lineageos.updater.model.UpdateStatus;
 
 public class UpdatesDbHelper extends SQLiteOpenHelper {
 
@@ -75,15 +77,15 @@ public class UpdatesDbHelper extends SQLiteOpenHelper {
         onUpgrade(db, oldVersion, newVersion);
     }
 
-    public void addUpdateWithOnConflict(Update update, int conflictAlgorithm) {
+    public void addUpdateWithOnConflict(UpdateInfo update, int conflictAlgorithm) {
         SQLiteDatabase db = getWritableDatabase();
         ContentValues values = new ContentValues();
         fillContentValues(update, values);
         db.insertWithOnConflict(UpdateEntry.TABLE_NAME, null, values, conflictAlgorithm);
     }
 
-    private static void fillContentValues(Update update, ContentValues values) {
-        values.put(UpdateEntry.COLUMN_NAME_STATUS, update.getPersistentStatus());
+    private static void fillContentValues(UpdateInfo update, ContentValues values) {
+        values.put(UpdateEntry.COLUMN_NAME_STATUS, update.getStatus().getPersistentStatus());
         values.put(UpdateEntry.COLUMN_NAME_PATH, update.getFile().getAbsolutePath());
         values.put(UpdateEntry.COLUMN_NAME_DOWNLOAD_ID, update.getDownloadId());
         values.put(UpdateEntry.COLUMN_NAME_TIMESTAMP, update.getTimestamp());
@@ -99,10 +101,10 @@ public class UpdatesDbHelper extends SQLiteOpenHelper {
         db.delete(UpdateEntry.TABLE_NAME, selection, selectionArgs);
     }
 
-    public void changeUpdateStatus(Update update) {
+    public void changeUpdateStatus(UpdateInfo update) {
         String selection = UpdateEntry.COLUMN_NAME_DOWNLOAD_ID + " = ?";
         String[] selectionArgs = {update.getDownloadId()};
-        changeUpdateStatus(selection, selectionArgs, update.getPersistentStatus());
+        changeUpdateStatus(selection, selectionArgs, update.getStatus().getPersistentStatus());
     }
 
     private void changeUpdateStatus(String selection, String[] selectionArgs,
@@ -113,11 +115,11 @@ public class UpdatesDbHelper extends SQLiteOpenHelper {
         db.update(UpdateEntry.TABLE_NAME, values, selection, selectionArgs);
     }
 
-    public List<Update> getUpdates() {
+    public List<UpdateInfo> getUpdates() {
         return getUpdates(null, null);
     }
 
-    public List<Update> getUpdates(String selection, String[] selectionArgs) {
+    public List<UpdateInfo> getUpdates(String selection, String[] selectionArgs) {
         SQLiteDatabase db = getReadableDatabase();
         String[] projection = {
                 UpdateEntry.COLUMN_NAME_PATH,
@@ -131,26 +133,35 @@ public class UpdatesDbHelper extends SQLiteOpenHelper {
         String sort = UpdateEntry.COLUMN_NAME_TIMESTAMP + " DESC";
         Cursor cursor = db.query(UpdateEntry.TABLE_NAME, projection, selection, selectionArgs,
                 null, null, sort);
-        List<Update> updates = new ArrayList<>();
+        List<UpdateInfo> updates = new ArrayList<>();
         if (cursor != null) {
             while (cursor.moveToNext()) {
-                Update update = new Update();
-                int index = cursor.getColumnIndex(UpdateEntry.COLUMN_NAME_PATH);
-                update.setFile(new File(cursor.getString(index)));
-                update.setName(update.getFile().getName());
-                index = cursor.getColumnIndex(UpdateEntry.COLUMN_NAME_DOWNLOAD_ID);
-                update.setDownloadId(cursor.getString(index));
-                index = cursor.getColumnIndex(UpdateEntry.COLUMN_NAME_TIMESTAMP);
-                update.setTimestamp(cursor.getLong(index));
-                index = cursor.getColumnIndex(UpdateEntry.COLUMN_NAME_TYPE);
-                update.setType(cursor.getString(index));
-                index = cursor.getColumnIndex(UpdateEntry.COLUMN_NAME_VERSION);
-                update.setVersion(cursor.getString(index));
-                index = cursor.getColumnIndex(UpdateEntry.COLUMN_NAME_STATUS);
-                update.setPersistentStatus(cursor.getInt(index));
-                index = cursor.getColumnIndex(UpdateEntry.COLUMN_NAME_SIZE);
-                update.setFileSize(cursor.getLong(index));
-                updates.add(update);
+                UpdateInfo.Builder builder = new UpdateInfo.Builder();
+                int idxPath = cursor.getColumnIndex(UpdateEntry.COLUMN_NAME_PATH);
+                File file = new File(cursor.getString(idxPath));
+                builder.setFile(file);
+                builder.setName(file.getName());
+                
+                int idxDownloadId = cursor.getColumnIndex(UpdateEntry.COLUMN_NAME_DOWNLOAD_ID);
+                builder.setDownloadId(cursor.getString(idxDownloadId));
+                
+                int idxTimestamp = cursor.getColumnIndex(UpdateEntry.COLUMN_NAME_TIMESTAMP);
+                builder.setTimestamp(cursor.getLong(idxTimestamp));
+                
+                int idxType = cursor.getColumnIndex(UpdateEntry.COLUMN_NAME_TYPE);
+                builder.setType(cursor.getString(idxType));
+                
+                int idxVersion = cursor.getColumnIndex(UpdateEntry.COLUMN_NAME_VERSION);
+                builder.setVersion(cursor.getString(idxVersion));
+                
+                int idxStatus = cursor.getColumnIndex(UpdateEntry.COLUMN_NAME_STATUS);
+                int status = cursor.getInt(idxStatus);
+                builder.setStatus(UpdateStatus.fromPersistentStatus(status));
+                
+                int idxSize = cursor.getColumnIndex(UpdateEntry.COLUMN_NAME_SIZE);
+                builder.setFileSize(cursor.getLong(idxSize));
+                
+                updates.add(builder.build());
             }
             cursor.close();
         }

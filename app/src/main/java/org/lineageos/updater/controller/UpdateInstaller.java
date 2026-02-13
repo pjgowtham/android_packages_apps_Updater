@@ -104,8 +104,8 @@ class UpdateInstaller {
             android.os.RecoverySystem.installPackage(mContext, update);
         } catch (IOException e) {
             Log.e(TAG, "Could not install update", e);
-            mUpdaterController.getActualUpdate(downloadId)
-                    .setStatus(UpdateStatus.INSTALLATION_FAILED);
+            mUpdaterController.setUpdate(downloadId, mUpdaterController.getUpdate(downloadId)
+                    .withStatus(UpdateStatus.INSTALLATION_FAILED));
             mUpdaterController.notifyUpdateChange(downloadId);
         }
     }
@@ -122,8 +122,9 @@ class UpdateInstaller {
                 public void update(int progress) {
                     long now = SystemClock.elapsedRealtime();
                     if (mLastUpdate < 0 || now - mLastUpdate > 500) {
-                        mUpdaterController.getActualUpdate(update.getDownloadId())
-                                .setInstallProgress(progress);
+                        mUpdaterController.setUpdate(update.getDownloadId(),
+                                mUpdaterController.getUpdate(update.getDownloadId())
+                                .withInstallProgress(progress));
                         mUpdaterController.notifyInstallProgress(update.getDownloadId());
                         mLastUpdate = now;
                     }
@@ -146,10 +147,9 @@ class UpdateInstaller {
 
                     mCanCancel = false;
                     if (mPrepareUpdateThread.isInterrupted()) {
-                        mUpdaterController.getActualUpdate(update.getDownloadId())
-                                .setStatus(UpdateStatus.INSTALLATION_CANCELLED);
-                        mUpdaterController.getActualUpdate(update.getDownloadId())
-                                .setInstallProgress(0);
+                        mUpdaterController.setUpdate(update.getDownloadId(), mUpdaterController.getUpdate(update.getDownloadId()).toBuilder()
+                                .setStatus(UpdateStatus.INSTALLATION_CANCELLED)
+                                .setInstallProgress(0).build());
                         //noinspection ResultOfMethodCallIgnored
                         uncryptFile.delete();
                     } else {
@@ -159,8 +159,8 @@ class UpdateInstaller {
                     Log.e(TAG, "Could not copy update", e);
                     //noinspection ResultOfMethodCallIgnored
                     uncryptFile.delete();
-                    mUpdaterController.getActualUpdate(update.getDownloadId())
-                            .setStatus(UpdateStatus.INSTALLATION_FAILED);
+                    mUpdaterController.setUpdate(update.getDownloadId(), mUpdaterController.getUpdate(update.getDownloadId())
+                            .withStatus(UpdateStatus.INSTALLATION_FAILED));
                 } finally {
                     synchronized (UpdateInstaller.this) {
                         mCanCancel = false;
@@ -177,8 +177,8 @@ class UpdateInstaller {
         sInstallingUpdate = update.getDownloadId();
         mCanCancel = false;
 
-        mUpdaterController.getActualUpdate(update.getDownloadId())
-                .setStatus(UpdateStatus.INSTALLING);
+        mUpdaterController.setUpdate(update.getDownloadId(), mUpdaterController.getUpdate(update.getDownloadId())
+                .withStatus(UpdateStatus.INSTALLING));
         mUpdaterController.notifyUpdateChange(update.getDownloadId());
     }
 

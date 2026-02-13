@@ -227,7 +227,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
             viewHolder.mCancel.setVisibility(View.GONE);
         }
 
-        boolean canDelete = update.getPersistentStatus() == UpdateStatus.Persistent.VERIFIED;
+        boolean canDelete = update.getStatus() == UpdateStatus.VERIFIED;
         viewHolder.mMenu.setOnClickListener(getClickListener(update, canDelete, viewHolder.mMenu));
         viewHolder.mProgress.setVisibility(View.VISIBLE);
         viewHolder.mProgressText.setVisibility(View.VISIBLE);
@@ -239,7 +239,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
         if (mUpdaterController.isWaitingForReboot(downloadId)) {
             viewHolder.mMenu.setOnClickListener(getClickListener(update, false, viewHolder.mMenu));
             setButtonAction(viewHolder.mAction, Action.REBOOT, downloadId, true);
-        } else if (update.getPersistentStatus() == UpdateStatus.Persistent.VERIFIED) {
+        } else if (update.getStatus() == UpdateStatus.VERIFIED) {
             viewHolder.mMenu.setOnClickListener(getClickListener(update, true, viewHolder.mMenu));
             setButtonAction(viewHolder.mAction,
                     Utils.canInstall(update) ? Action.INSTALL : Action.DELETE,
@@ -290,20 +290,18 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
         viewHolder.itemView.setSelected(downloadId.equals(mSelectedDownload));
 
         boolean activeLayout;
-        switch (update.getPersistentStatus()) {
-            case UpdateStatus.Persistent.UNKNOWN:
-                activeLayout = update.getStatus() == UpdateStatus.STARTING
-                        || update.getStatus() == UpdateStatus.INSTALLING;
-                break;
-            case UpdateStatus.Persistent.VERIFIED:
-                activeLayout = update.getStatus() == UpdateStatus.INSTALLING
-                        || update.getStatus() == UpdateStatus.INSTALLATION_SUSPENDED;
-                break;
-            case UpdateStatus.Persistent.INCOMPLETE:
+        switch (update.getStatus()) {
+            case DOWNLOADING:
+            case PAUSED:
+            case PAUSED_ERROR:
+            case VERIFYING:
+            case STARTING:
+            case INSTALLING:
+            case INSTALLATION_SUSPENDED:
                 activeLayout = true;
                 break;
             default:
-                throw new RuntimeException("Unknown update status");
+                activeLayout = false;
         }
 
         String buildDate = StringGenerator.getDateLocalizedUTC(mActivity,
@@ -438,7 +436,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
                         if (installDialog != null) {
                             installDialog.show();
                         }
-                    } else if (update.getPersistentStatus() != UpdateStatus.Persistent.VERIFIED &&
+                    } else if (update.getStatus() != UpdateStatus.VERIFIED &&
                             update.getAvailableOnline()) {
                         AlertDialog.Builder installDialog = getInstallDialog(downloadId);
                         if (installDialog != null) {
@@ -659,7 +657,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
         popupMenu.inflate(R.menu.menu_action_mode);
 
         boolean shouldShowDelete = canDelete;
-        boolean isVerified = update.getPersistentStatus() == UpdateStatus.Persistent.VERIFIED;
+        boolean isVerified = update.getStatus() == UpdateStatus.VERIFIED;
         if (isVerified && !Utils.canInstall(update) && !update.getAvailableOnline()) {
             shouldShowDelete = false;
         }
