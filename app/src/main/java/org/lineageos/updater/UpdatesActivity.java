@@ -42,6 +42,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.lifecycle.ViewModelProvider;
@@ -64,7 +65,7 @@ import org.lineageos.updater.model.UpdateInfo;
 import org.lineageos.updater.model.UpdateStatus;
 import org.lineageos.updater.viewmodel.UpdateCheckViewModel;
 
-public class UpdatesActivity extends UpdatesListActivity implements UpdateImporter.Callbacks {
+public class UpdatesActivity extends AppCompatActivity implements UpdateImporter.Callbacks {
 
     private static final String TAG = "UpdatesActivity";
 
@@ -359,7 +360,6 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
         headerLastCheck.setText(lastCheckString);
     }
 
-    @Override
     public void exportUpdate(UpdateInfo update) {
         mToBeExported = update;
 
@@ -379,7 +379,6 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
         startService(intent);
     }
 
-    @Override
     public void showSnackbar(int stringId, int duration) {
         Snackbar.make(findViewById(R.id.main_container), stringId, duration).show();
     }

@@ -79,7 +79,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
     private List<String> mDownloadIds;
     private String mSelectedDownload;
     private UpdaterController mUpdaterController;
-    private final UpdatesListActivity mActivity;
+    private final UpdatesActivity mActivity;
 
     private AlertDialog infoDialog;
 
@@ -128,7 +128,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
         }
     }
 
-    public UpdatesListAdapter(UpdatesListActivity activity) {
+    public UpdatesListAdapter(UpdatesActivity activity) {
         mActivity = activity;
         mAlphaDisabledValue = ColorUtil.getDisabledAlpha(mActivity);
     }
