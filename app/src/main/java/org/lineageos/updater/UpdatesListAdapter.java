@@ -188,7 +188,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
                 setButtonAction(viewHolder.mAction, Action.CANCEL_INSTALLATION, downloadId, true);
             }
             viewHolder.mProgressText.setText(!isABUpdate ? R.string.dialog_prepare_zip_message :
-                    update.getFinalizing() ?
+                    update.isFinalizing() ?
                             R.string.finalizing_package :
                             R.string.preparing_ota_first_boot);
             String percentage = NumberFormat.getPercentInstance().format(
@@ -224,7 +224,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
             viewHolder.mCancel.setVisibility(View.GONE);
         }
 
-        boolean canDelete = update.getPersistentStatus() == UpdateStatus.Persistent.VERIFIED;
+        boolean canDelete = update.getStatus() == UpdateStatus.VERIFIED;
         viewHolder.mMenu.setOnClickListener(getClickListener(update, canDelete, viewHolder.mMenu));
         viewHolder.mProgress.setVisibility(View.VISIBLE);
         viewHolder.mProgressText.setVisibility(View.VISIBLE);
@@ -236,7 +236,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
         if (mUpdaterController.isWaitingForReboot(downloadId)) {
             viewHolder.mMenu.setOnClickListener(getClickListener(update, false, viewHolder.mMenu));
             setButtonAction(viewHolder.mAction, Action.REBOOT, downloadId, true);
-        } else if (update.getPersistentStatus() == UpdateStatus.Persistent.VERIFIED) {
+        } else if (update.getStatus() == UpdateStatus.VERIFIED) {
             viewHolder.mMenu.setOnClickListener(getClickListener(update, true, viewHolder.mMenu));
             setButtonAction(viewHolder.mAction,
                     Utils.canInstall(update) ? Action.INSTALL : Action.DELETE,
@@ -278,21 +278,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
 
         viewHolder.itemView.setSelected(downloadId.equals(mSelectedDownload));
 
-        boolean activeLayout;
-        switch (update.getPersistentStatus()) {
-            case UpdateStatus.Persistent.UNKNOWN:
-                activeLayout = update.getStatus() == UpdateStatus.STARTING;
-                break;
-            case UpdateStatus.Persistent.VERIFIED:
-                activeLayout = update.getStatus() == UpdateStatus.INSTALLING
-                        || update.getStatus() == UpdateStatus.INSTALLATION_SUSPENDED;
-                break;
-            case UpdateStatus.Persistent.INCOMPLETE:
-                activeLayout = true;
-                break;
-            default:
-                throw new RuntimeException("Unknown update status");
-        }
+        boolean activeLayout = update.getStatus().isInProgress();
 
         String buildDate = StringGenerator.getDateLocalizedUTC(mActivity,
                 DateFormat.LONG, update.getTimestamp());
@@ -609,13 +595,13 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
         popupMenu.inflate(R.menu.menu_action_mode);
 
         boolean shouldShowDelete = canDelete;
-        boolean isVerified = update.getPersistentStatus() == UpdateStatus.Persistent.VERIFIED;
-        if (isVerified && !Utils.canInstall(update) && !update.getAvailableOnline()) {
+        boolean isVerified = update.getStatus() == UpdateStatus.VERIFIED;
+        if (isVerified && !Utils.canInstall(update) && !update.isAvailableOnline()) {
             shouldShowDelete = false;
         }
         MenuBuilder menu = (MenuBuilder) popupMenu.getMenu();
         menu.findItem(R.id.menu_delete_action).setVisible(shouldShowDelete);
-        menu.findItem(R.id.menu_copy_url).setVisible(update.getAvailableOnline());
+        menu.findItem(R.id.menu_copy_url).setVisible(update.isAvailableOnline());
         menu.findItem(R.id.menu_export_update).setVisible(isVerified);
 
         popupMenu.setOnMenuItemClickListener(item -> {

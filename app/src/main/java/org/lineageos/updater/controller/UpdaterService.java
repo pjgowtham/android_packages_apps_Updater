@@ -41,7 +41,6 @@ import org.lineageos.updater.UpdatesActivity;
 import org.lineageos.updater.misc.Constants;
 import org.lineageos.updater.misc.StringGenerator;
 import org.lineageos.updater.misc.Utils;
-import org.lineageos.updater.model.Update;
 import org.lineageos.updater.model.UpdateInfo;
 import org.lineageos.updater.model.UpdateStatus;
 
@@ -126,13 +125,13 @@ public class UpdaterService extends Service {
                     setNotificationTitle(update);
                     handleInstallProgress(update);
                 } else if (UpdaterController.ACTION_UPDATE_REMOVED.equals(intent.getAction())) {
-                    final boolean isLocalUpdate = Update.LOCAL_ID.equals(downloadId);
+                    final boolean isLocalUpdate = UpdateInfo.LOCAL_ID.equals(downloadId);
                     Bundle extras = mNotificationBuilder.getExtras();
                     if (!isLocalUpdate && downloadId != null && downloadId.equals(
                             extras.getString(UpdaterController.EXTRA_DOWNLOAD_ID))) {
                         mNotificationBuilder.setExtras(null);
                         UpdateInfo update = mUpdaterController.getUpdate(downloadId);
-                        if (update.getStatus() != UpdateStatus.INSTALLED) {
+                        if (update.getStatus() != UpdateStatus.UPDATED_NEED_REBOOT) {
                             mNotificationManager.cancel(NOTIFICATION_ID);
                         }
                     }
@@ -207,7 +206,7 @@ public class UpdaterService extends Service {
                 Log.e(TAG, "Update not found: " + downloadId);
                 return START_NOT_STICKY;
             }
-            if (update.getPersistentStatus() != UpdateStatus.Persistent.VERIFIED) {
+            if (update.getStatus() != UpdateStatus.VERIFIED) {
                 throw new IllegalArgumentException(update.getDownloadId() + " is not verified");
             }
             try {
@@ -222,8 +221,8 @@ public class UpdaterService extends Service {
                 }
             } catch (IOException e) {
                 Log.e(TAG, "Could not install update", e);
-                mUpdaterController.getActualUpdate(downloadId)
-                        .setStatus(UpdateStatus.INSTALLATION_FAILED);
+                mUpdaterController.setUpdate(downloadId, mUpdaterController.getUpdate(downloadId)
+                        .withStatus(UpdateStatus.INSTALLATION_FAILED));
                 mUpdaterController.notifyUpdateChange(downloadId);
             }
         } else if (ACTION_INSTALL_STOP.equals(intent.getAction())) {
@@ -412,7 +411,7 @@ public class UpdaterService extends Service {
                 mNotificationManager.notify(NOTIFICATION_ID, mNotificationBuilder.build());
                 break;
             }
-            case INSTALLED: {
+            case UPDATED_NEED_REBOOT: {
                 stopForeground(STOP_FOREGROUND_DETACH);
                 mNotificationBuilder.mActions.clear();
                 mNotificationBuilder.setStyle(null);
@@ -494,7 +493,7 @@ public class UpdaterService extends Service {
         mNotificationStyle.setSummaryText(percent);
         boolean notAB = UpdateInstaller.isInstalling();
         mNotificationStyle.bigText(notAB ? getString(R.string.dialog_prepare_zip_message) :
-                update.getFinalizing() ?
+                update.isFinalizing() ?
                         getString(R.string.finalizing_package) :
                         getString(R.string.preparing_ota_first_boot));
         mNotificationManager.notify(NOTIFICATION_ID, mNotificationBuilder.build());
@@ -574,7 +573,7 @@ public class UpdaterService extends Service {
         boolean deleteUpdate = pref.getBoolean(Constants.PREF_AUTO_DELETE_UPDATES, false);
 
         // Always delete local updates
-        boolean isLocal = Update.LOCAL_ID.equals(downloadId);
+        boolean isLocal = UpdateInfo.LOCAL_ID.equals(downloadId);
         if (deleteUpdate || isLocal) {
             mUpdaterController.deleteUpdate(downloadId);
         }

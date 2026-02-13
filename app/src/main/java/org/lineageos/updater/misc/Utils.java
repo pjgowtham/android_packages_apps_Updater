@@ -36,8 +36,6 @@ import org.json.JSONObject;
 import org.lineageos.updater.R;
 import org.lineageos.updater.UpdatesDbHelper;
 import org.lineageos.updater.controller.UpdaterService;
-import org.lineageos.updater.model.Update;
-import org.lineageos.updater.model.UpdateBaseInfo;
 import org.lineageos.updater.model.UpdateInfo;
 
 import java.io.BufferedReader;
@@ -68,21 +66,19 @@ public class Utils {
         return new File(context.getCacheDir(), "updates.json");
     }
 
-    // This should really return an UpdateBaseInfo object, but currently this only
-    // used to initialize UpdateInfo objects
     private static UpdateInfo parseJsonUpdate(JSONObject object) throws JSONException {
-        Update update = new Update();
-        update.setTimestamp(object.getLong("datetime"));
-        update.setName(object.getString("filename"));
-        update.setDownloadId(object.getString("id"));
-        update.setType(object.getString("romtype"));
-        update.setFileSize(object.getLong("size"));
-        update.setDownloadUrl(object.getString("url"));
-        update.setVersion(object.getString("version"));
-        return update;
+        return new UpdateInfo.Builder()
+            .setTimestamp(object.getLong("datetime"))
+            .setName(object.getString("filename"))
+            .setDownloadId(object.getString("id"))
+            .setType(object.getString("romtype"))
+            .setFileSize(object.getLong("size"))
+            .setDownloadUrl(object.getString("url"))
+            .setVersion(object.getString("version"))
+            .build();
     }
 
-    public static boolean isCompatible(UpdateBaseInfo update) {
+    public static boolean isCompatible(UpdateInfo update) {
         if (update.getVersion().compareTo(DeviceInfoUtils.getBuildVersion()) < 0) {
             Log.d(TAG, update.getName() + " is older than current Android version");
             return false;
@@ -115,7 +111,7 @@ public class Utils {
         }
     }
 
-    public static boolean canInstall(UpdateBaseInfo update) {
+    public static boolean canInstall(UpdateInfo update) {
         boolean allowMajorUpgrades = DeviceInfoUtils.isMajorUpdateAllowed();
 
         return (DeviceInfoUtils.isDowngradingAllowed() ||

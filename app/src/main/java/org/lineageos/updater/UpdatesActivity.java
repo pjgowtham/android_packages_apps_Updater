@@ -70,7 +70,6 @@ import org.lineageos.updater.misc.Constants;
 import org.lineageos.updater.misc.DeviceInfoUtils;
 import org.lineageos.updater.misc.StringGenerator;
 import org.lineageos.updater.misc.Utils;
-import org.lineageos.updater.model.Update;
 import org.lineageos.updater.model.UpdateInfo;
 
 import java.io.File;
@@ -326,7 +325,7 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
     }
 
     @Override
-    public void onImportCompleted(Update update) {
+    public void onImportCompleted(UpdateInfo update) {
         if (importDialog != null) {
             importDialog.dismiss();
             importDialog = null;
@@ -511,7 +510,7 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
     }
 
     private void handleDownloadStatusChange(String downloadId) {
-        if (Update.LOCAL_ID.equals(downloadId)) {
+        if (UpdateInfo.LOCAL_ID.equals(downloadId)) {
             return;
         }
 

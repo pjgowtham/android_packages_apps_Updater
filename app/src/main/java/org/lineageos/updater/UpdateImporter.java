@@ -25,7 +25,7 @@ import android.util.Log;
 
 import org.lineageos.updater.controller.UpdaterController;
 import org.lineageos.updater.misc.Utils;
-import org.lineageos.updater.model.Update;
+import org.lineageos.updater.model.UpdateInfo;
 import org.lineageos.updater.model.UpdateStatus;
 
 import java.io.File;
@@ -89,7 +89,7 @@ public class UpdateImporter {
                 importedFile = importFile(uri);
                 verifyPackage(importedFile);
 
-                final Update update = buildLocalUpdate(importedFile);
+                final UpdateInfo update = buildLocalUpdate(importedFile);
                 addUpdate(update);
                 activity.runOnUiThread(() -> callbacks.onImportCompleted(update));
             } catch (Exception e) {
@@ -139,20 +139,17 @@ public class UpdateImporter {
         return outFile;
     }
 
-    private Update buildLocalUpdate(File file) {
+    private UpdateInfo buildLocalUpdate(File file) {
         final long timeStamp = getTimeStamp(file);
         final String name = activity.getString(R.string.local_update_name);
-        final Update update = new Update();
-        update.setAvailableOnline(false);
-        update.setName(name);
-        update.setFile(file);
-        update.setFileSize(file.length());
-        update.setDownloadId(Update.LOCAL_ID);
-        update.setTimestamp(timeStamp);
-        update.setStatus(UpdateStatus.VERIFIED);
-        update.setPersistentStatus(UpdateStatus.Persistent.VERIFIED);
-        update.setVersion(name);
-        return update;
+        return new UpdateInfo.Builder()
+            .setName(name)
+            .setFile(file)
+            .setFileSize(file.length())
+            .setTimestamp(timeStamp)
+            .setStatus(UpdateStatus.VERIFIED)
+            .setVersion(name)
+            .build();
     }
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
@@ -169,7 +166,7 @@ public class UpdateImporter {
         }
     }
 
-    private void addUpdate(Update update) {
+    private void addUpdate(UpdateInfo update) {
         UpdaterController controller = UpdaterController.getInstance(activity);
         controller.addUpdate(update, false);
     }
@@ -236,6 +233,6 @@ public class UpdateImporter {
     public interface Callbacks {
         void onImportStarted();
 
-        void onImportCompleted(Update update);
+        void onImportCompleted(UpdateInfo update);
     }
 }
