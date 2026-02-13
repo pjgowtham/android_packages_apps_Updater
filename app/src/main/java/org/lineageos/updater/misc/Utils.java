@@ -34,8 +34,6 @@ import org.json.JSONObject;
 import org.lineageos.updater.R;
 import org.lineageos.updater.UpdatesDbHelper;
 import org.lineageos.updater.controller.UpdaterService;
-import org.lineageos.updater.model.Update;
-import org.lineageos.updater.model.UpdateBaseInfo;
 import org.lineageos.updater.model.UpdateInfo;
 
 import java.io.BufferedReader;
@@ -66,10 +64,8 @@ public class Utils {
         return new File(context.getCacheDir(), "updates.json");
     }
 
-    // This should really return an UpdateBaseInfo object, but currently this only
-    // used to initialize UpdateInfo objects
     private static UpdateInfo parseJsonUpdate(JSONObject object) throws JSONException {
-        Update update = new Update();
+        UpdateInfo update = new UpdateInfo();
         update.setTimestamp(object.getLong("datetime"));
         update.setName(object.getString("filename"));
         update.setDownloadId(object.getString("id"));
@@ -80,7 +76,7 @@ public class Utils {
         return update;
     }
 
-    public static boolean isCompatible(UpdateBaseInfo update) {
+    public static boolean isCompatible(UpdateInfo update) {
         if (update.getVersion().compareTo(DeviceInfoUtils.getBuildVersion()) < 0) {
             Log.d(TAG, update.getName() + " is older than current Android version");
             return false;
@@ -113,7 +109,7 @@ public class Utils {
         }
     }
 
-    public static boolean canInstall(UpdateBaseInfo update) {
+    public static boolean canInstall(UpdateInfo update) {
         boolean allowMajorUpgrades = DeviceInfoUtils.isMajorUpdateAllowed();
 
         return (DeviceInfoUtils.isDowngradingAllowed() ||
