@@ -201,7 +201,7 @@ class UpdateCheckViewModel(application: Application) : AndroidViewModel(applicat
     private fun refreshUpdateIds(controller: UpdaterController) {
         val sortedIds = controller.updates.sortedByDescending { it.timestamp }.map { it.downloadId }
         _uiState.update {
-            it.copy(updateIds = sortedIds)
+            it.copy(updateIds = sortedIds.toMutableList())
         }
     }
 

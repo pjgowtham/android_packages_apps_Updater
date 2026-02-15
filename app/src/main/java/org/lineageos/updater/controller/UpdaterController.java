@@ -359,6 +359,7 @@ public class UpdaterController {
         }
         update.setAvailableOnline(availableOnline);
         mDownloads.put(update.getDownloadId(), new DownloadEntry(update));
+        notifyUpdateChange(update.getDownloadId());
         return true;
     }
 

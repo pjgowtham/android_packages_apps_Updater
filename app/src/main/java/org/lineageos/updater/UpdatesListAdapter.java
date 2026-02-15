@@ -328,14 +328,6 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
         mDownloadIds = downloadIds;
     }
 
-    public void addItem(String downloadId) {
-        if (mDownloadIds == null) {
-            mDownloadIds = new ArrayList<>();
-        }
-        mDownloadIds.add(0, downloadId);
-        notifyItemInserted(0);
-    }
-
     public void notifyItemChanged(String downloadId) {
         if (mDownloadIds == null) {
             return;
