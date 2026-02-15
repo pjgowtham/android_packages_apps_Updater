@@ -52,6 +52,7 @@ import org.lineageos.updater.controller.UpdaterService;
 import org.lineageos.updater.misc.Constants;
 import org.lineageos.updater.misc.StringGenerator;
 import org.lineageos.updater.misc.Utils;
+import org.lineageos.updater.model.Action;
 import org.lineageos.updater.model.UpdateInfo;
 import org.lineageos.updater.model.UpdateStatus;
 
@@ -80,20 +81,6 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
     private final UpdatesActivity mActivity;
 
     private AlertDialog infoDialog;
-
-    private enum Action {
-        DOWNLOAD,
-        PAUSE,
-        RESUME,
-        INSTALL,
-        INFO,
-        DELETE,
-        CANCEL_INSTALLATION,
-        REBOOT,
-        CANCEL,
-        SUSPEND_INSTALLATION,
-        RESUME_INSTALLATION,
-    }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
         private final Button mAction;
@@ -395,22 +382,20 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
 
     private void setButtonAction(Button button, Action action, final String downloadId,
             boolean enabled) {
+        button.setText(action.getTextResId());
+        button.setEnabled(enabled);
+        button.setAlpha(enabled ? 1.f : mAlphaDisabledValue);
+
         final View.OnClickListener clickListener;
         switch (action) {
             case DOWNLOAD:
-                button.setText(R.string.action_download);
-                button.setEnabled(enabled);
                 clickListener = enabled ? view -> downloadWithConfirmation(downloadId, false) : null;
                 break;
             case PAUSE:
-                button.setText(R.string.action_pause);
-                button.setEnabled(enabled);
                 clickListener = enabled ? view -> mUpdaterController.pauseDownload(downloadId)
                         : null;
                 break;
             case RESUME: {
-                button.setText(R.string.action_resume);
-                button.setEnabled(enabled);
                 UpdateInfo update = mUpdaterController.getUpdate(downloadId);
                 final boolean canInstall = Utils.canInstall(update) ||
                         update.getFile().length() == update.getFileSize();
@@ -425,8 +410,6 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
             }
             break;
             case INSTALL: {
-                button.setText(R.string.action_install);
-                button.setEnabled(enabled);
                 UpdateInfo update = mUpdaterController.getUpdate(downloadId);
                 final boolean canInstall = Utils.canInstall(update);
                 clickListener = enabled ? view -> {
@@ -449,26 +432,18 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
             }
             break;
             case INFO: {
-                button.setText(R.string.action_info);
-                button.setEnabled(enabled);
                 clickListener = enabled ? view -> showInfoDialog() : null;
             }
             break;
             case DELETE: {
-                button.setText(R.string.action_delete);
-                button.setEnabled(enabled);
                 clickListener = enabled ? view -> getDeleteDialog(downloadId).show() : null;
             }
             break;
             case CANCEL_INSTALLATION: {
-                button.setText(android.R.string.cancel);
-                button.setEnabled(enabled);
                 clickListener = enabled ? view -> getCancelInstallationDialog().show() : null;
             }
             break;
             case REBOOT: {
-                button.setText(R.string.reboot);
-                button.setEnabled(enabled);
                 clickListener = enabled ? view -> {
                     PowerManager pm = mActivity.getSystemService(PowerManager.class);
                     pm.reboot(null);
@@ -476,14 +451,10 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
             }
             break;
             case CANCEL: {
-                button.setText(android.R.string.cancel);
-                button.setEnabled(enabled);
                 clickListener = enabled ? view -> getCancelDownloadDialog(downloadId).show() : null;
             }
             break;
             case SUSPEND_INSTALLATION: {
-                button.setText(R.string.action_pause);
-                button.setEnabled(enabled);
                 clickListener = enabled ? view -> {
                     Intent intent = new Intent(mActivity, UpdaterService.class);
                     intent.setAction(UpdaterService.ACTION_INSTALL_SUSPEND);
@@ -492,8 +463,6 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
             }
             break;
             case RESUME_INSTALLATION: {
-                button.setText(R.string.action_resume);
-                button.setEnabled(enabled);
                 clickListener = enabled ? view -> {
                     Intent intent = new Intent(mActivity, UpdaterService.class);
                     intent.setAction(UpdaterService.ACTION_INSTALL_RESUME);
@@ -504,7 +473,6 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
             default:
                 clickListener = null;
         }
-        button.setAlpha(enabled ? 1.f : mAlphaDisabledValue);
 
         // Disable action mode when a button is clicked
         button.setOnClickListener(v -> {
