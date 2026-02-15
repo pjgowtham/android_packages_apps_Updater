@@ -34,11 +34,6 @@ fun UpdatesActivity.observeViewModel() {
                         if (empty) View.VISIBLE else View.GONE
                     findViewById<View>(R.id.recycler_view).visibility =
                         if (empty) View.GONE else View.VISIBLE
-                    if (state.isCheckingForUpdates) {
-                        refreshAnimationStart()
-                    } else {
-                        refreshAnimationStop()
-                    }
                     updateLastCheckedString(state.lastCheckTimestamp)
                 }
             }
