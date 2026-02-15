@@ -36,9 +36,6 @@ import android.util.TypedValue;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.animation.Animation;
-import android.view.animation.LinearInterpolator;
-import android.view.animation.RotateAnimation;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
@@ -55,6 +52,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.SimpleItemAnimator;
 
+import com.android.settingslib.utils.ColorUtil;
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.appbar.CollapsingToolbarLayout;
 import com.google.android.material.snackbar.Snackbar;
@@ -82,9 +80,7 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
     private BroadcastReceiver mBroadcastReceiver;
 
     private UpdatesListAdapter mAdapter;
-
-    private View mRefreshIconView;
-    private RotateAnimation mRefreshAnimation;
+    private Menu mMenu;
 
     private boolean mIsTV;
 
@@ -214,11 +210,6 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
                 }
             });
 
-            mRefreshAnimation = new RotateAnimation(0, 360, Animation.RELATIVE_TO_SELF, 0.5f,
-                    Animation.RELATIVE_TO_SELF, 0.5f);
-            mRefreshAnimation.setInterpolator(new LinearInterpolator());
-            mRefreshAnimation.setDuration(1000);
-
             if (!Utils.hasTouchscreen(this)) {
                 // This can't be collapsed without a touchscreen
                 appBar.setExpanded(false);
@@ -269,6 +260,7 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_toolbar, menu);
+        mMenu = menu;
         return super.onCreateOptionsMenu(menu);
     }
 
@@ -460,7 +452,7 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
                     if (!cancelled) {
                         showSnackbar(R.string.snack_updates_check_failed, Snackbar.LENGTH_LONG);
                     }
-                    refreshAnimationStop();
+                    setRefreshEnabled(true);
                 });
             }
 
@@ -473,7 +465,7 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
                 runOnUiThread(() -> {
                     Log.d(TAG, "List downloaded");
                     processNewJson(jsonFile, jsonFileTmp, manualRefresh);
-                    refreshAnimationStop();
+                    setRefreshEnabled(true);
                 });
             }
         };
@@ -491,8 +483,30 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
             return;
         }
 
-        refreshAnimationStart();
+        setRefreshEnabled(false);
         downloadClient.start();
+    }
+
+    private void setRefreshEnabled(boolean enabled) {
+        float disabledAlpha = ColorUtil.getDisabledAlpha(this);
+        if (!mIsTV) {
+            if (mMenu != null) {
+                MenuItem item = mMenu.findItem(R.id.menu_refresh);
+                if (item != null) {
+                    item.setEnabled(enabled);
+                    if (item.getIcon() != null) {
+                        item.getIcon().setAlpha(enabled ? 255
+                                : (int) (255 * disabledAlpha));
+                    }
+                }
+            }
+        } else {
+            View refreshButton = findViewById(R.id.refresh);
+            if (refreshButton != null) {
+                refreshButton.setEnabled(enabled);
+                refreshButton.setAlpha(enabled ? 1f : disabledAlpha);
+            }
+        }
     }
 
     private void updateLastCheckedString() {
@@ -548,39 +562,6 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
     @Override
     public void showSnackbar(int stringId, int duration) {
         Snackbar.make(findViewById(R.id.main_container), stringId, duration).show();
-    }
-
-    private void refreshAnimationStart() {
-        if (!mIsTV) {
-            if (mRefreshIconView == null) {
-                mRefreshIconView = findViewById(R.id.menu_refresh);
-            }
-            if (mRefreshIconView != null) {
-                mRefreshAnimation.setRepeatCount(Animation.INFINITE);
-                mRefreshIconView.startAnimation(mRefreshAnimation);
-                mRefreshIconView.setEnabled(false);
-            }
-        } else {
-            findViewById(R.id.recycler_view).setVisibility(View.GONE);
-            findViewById(R.id.no_new_updates_view).setVisibility(View.GONE);
-            findViewById(R.id.refresh_progress).setVisibility(View.VISIBLE);
-        }
-    }
-
-    private void refreshAnimationStop() {
-        if (!mIsTV) {
-            if (mRefreshIconView != null) {
-                mRefreshAnimation.setRepeatCount(0);
-                mRefreshIconView.setEnabled(true);
-            }
-        } else {
-            findViewById(R.id.refresh_progress).setVisibility(View.GONE);
-            if (mAdapter.getItemCount() > 0) {
-                findViewById(R.id.recycler_view).setVisibility(View.VISIBLE);
-            } else {
-                findViewById(R.id.no_new_updates_view).setVisibility(View.VISIBLE);
-            }
-        }
     }
 
     private void showPreferencesDialog() {
