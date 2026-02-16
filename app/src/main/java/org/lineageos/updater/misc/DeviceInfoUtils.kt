@@ -62,6 +62,10 @@ object DeviceInfoUtils : SettingsLibDeviceInfoUtils() {
         get() = SystemProperties.getBoolean(PROP_UPDATE_RECOVERY, false)
         set(value) = SystemProperties.set(PROP_UPDATE_RECOVERY, value.toString())
 
+    @get:JvmName("securityPatch")
+    val securityPatch: String?
+        get() = SettingsLibDeviceInfoUtils.getSecurityPatch()
+
     @JvmStatic
     val updaterUri: String
         get() = SystemProperties.get(PROP_UPDATER_URI, "")
