@@ -35,10 +35,10 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.view.ContextThemeWrapper;
 import androidx.appcompat.view.menu.MenuBuilder;
 import androidx.appcompat.view.menu.MenuPopupHelper;
 import androidx.appcompat.widget.PopupMenu;
@@ -46,8 +46,6 @@ import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.settingslib.utils.ColorUtil;
-
-import com.google.android.material.snackbar.Snackbar;
 
 import org.lineageos.updater.controller.UpdaterController;
 import org.lineageos.updater.controller.UpdaterService;
@@ -420,8 +418,8 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
                     if (canInstall) {
                         downloadWithConfirmation(downloadId, true);
                     } else {
-                        mActivity.showSnackbar(R.string.snack_update_not_installable,
-                                Snackbar.LENGTH_LONG);
+                        mActivity.showToast(R.string.snack_update_not_installable,
+                                Toast.LENGTH_LONG);
                     }
                 } : null;
             }
@@ -444,8 +442,8 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
                             installDialog.show();
                         }
                     } else {
-                        mActivity.showSnackbar(R.string.snack_update_not_installable,
-                                Snackbar.LENGTH_LONG);
+                        mActivity.showToast(R.string.snack_update_not_installable,
+                                Toast.LENGTH_LONG);
                     }
                 } : null;
             }
@@ -651,9 +649,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
         mSelectedDownload = update.getDownloadId();
         notifyItemChanged(update.getDownloadId());
 
-        ContextThemeWrapper wrapper = new ContextThemeWrapper(mActivity,
-                R.style.AppTheme_PopupMenuOverlapAnchor);
-        PopupMenu popupMenu = new PopupMenu(wrapper, anchor, Gravity.NO_GRAVITY,
+        PopupMenu popupMenu = new PopupMenu(mActivity, anchor, Gravity.NO_GRAVITY,
                 R.attr.actionOverflowMenuStyle, 0);
         popupMenu.inflate(R.menu.menu_action_mode);
 
@@ -686,7 +682,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
             return false;
         });
 
-        MenuPopupHelper helper = new MenuPopupHelper(wrapper, menu, anchor);
+        MenuPopupHelper helper = new MenuPopupHelper(mActivity, menu, anchor);
         helper.show();
     }
 

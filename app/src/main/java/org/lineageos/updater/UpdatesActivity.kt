@@ -5,6 +5,7 @@
 
 package org.lineageos.updater
 
+import android.app.AlertDialog
 import android.app.UiModeManager
 import android.content.Intent
 import android.content.res.Configuration
@@ -12,19 +13,14 @@ import android.icu.text.DateFormat
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.util.TypedValue
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
-import android.widget.RelativeLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.Toolbar
 import androidx.core.content.edit
 import androidx.core.net.toUri
-import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
@@ -33,9 +29,7 @@ import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.SimpleItemAnimator
-import com.google.android.material.appbar.AppBarLayout
-import com.google.android.material.appbar.CollapsingToolbarLayout
-import com.google.android.material.snackbar.Snackbar
+import com.android.settingslib.collapsingtoolbar.CollapsingToolbarBaseActivity
 import kotlinx.coroutines.launch
 import org.lineageos.updater.controller.UpdaterController
 import org.lineageos.updater.misc.Constants
@@ -46,7 +40,7 @@ import org.lineageos.updater.model.UpdateInfo
 import org.lineageos.updater.model.UpdateStatus
 import org.lineageos.updater.viewmodel.UpdateCheckViewModel
 
-class UpdatesActivity : AppCompatActivity(), UpdateImporter.Callbacks,
+class UpdatesActivity : CollapsingToolbarBaseActivity(), UpdateImporter.Callbacks,
     UpdaterController.StatusListener {
 
     private lateinit var viewModel: UpdateCheckViewModel
@@ -75,40 +69,17 @@ class UpdatesActivity : AppCompatActivity(), UpdateImporter.Callbacks,
         val uiModeManager = getSystemService(UiModeManager::class.java)
         isTV = uiModeManager.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION
 
+        if (!isTV) {
+            setTitle(R.string.display_name)
+        } else {
+            getAppBarLayout()?.visibility = View.GONE
+        }
+
         val recyclerView = findViewById<RecyclerView>(R.id.recycler_view)
         adapter = UpdatesListAdapter(this)
         recyclerView.adapter = adapter
         recyclerView.layoutManager = LinearLayoutManager(this)
         (recyclerView.itemAnimator as? SimpleItemAnimator)?.supportsChangeAnimations = false
-
-        if (!isTV) {
-            val toolbar = findViewById<Toolbar>(R.id.toolbar)
-            setSupportActionBar(toolbar)
-            supportActionBar?.let { actionBar ->
-                actionBar.setDisplayShowTitleEnabled(false)
-                actionBar.setDisplayHomeAsUpEnabled(true)
-                val tv = TypedValue()
-                val statusBarHeight = if (theme.resolveAttribute(
-                        android.R.attr.actionBarSize, tv, true
-                    )
-                ) {
-                    TypedValue.complexToDimensionPixelSize(
-                        tv.data, resources.displayMetrics
-                    )
-                } else {
-                    0
-                }
-                val headerContainer = findViewById<RelativeLayout>(R.id.header_container)
-                recyclerView.setOnApplyWindowInsetsListener { _, insets ->
-                    val top = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
-                    val lp =
-                        headerContainer.layoutParams as CollapsingToolbarLayout.LayoutParams
-                    lp.topMargin = top + statusBarHeight
-                    headerContainer.layoutParams = lp
-                    insets
-                }
-            }
-        }
 
         findViewById<TextView>(R.id.header_title).text =
             getString(R.string.header_title_text, DeviceInfoUtils.buildVersion)
@@ -126,28 +97,7 @@ class UpdatesActivity : AppCompatActivity(), UpdateImporter.Callbacks,
                 R.string.header_android_security_update, DeviceInfoUtils.securityPatch
             )
 
-        if (!isTV) {
-            // Switch between header title and appbar title minimizing overlaps
-            val collapsingToolbar =
-                findViewById<CollapsingToolbarLayout>(R.id.collapsing_toolbar)
-            val appBar = findViewById<AppBarLayout>(R.id.app_bar)
-            var isShown = false
-            appBar.addOnOffsetChangedListener { appBarLayout, verticalOffset ->
-                val scrollRange = appBarLayout.totalScrollRange
-                if (!isShown && scrollRange + verticalOffset < 10) {
-                    collapsingToolbar.title = getString(R.string.display_name)
-                    isShown = true
-                } else if (isShown && scrollRange + verticalOffset > 100) {
-                    collapsingToolbar.title = null
-                    isShown = false
-                }
-            }
-
-            if (!Utils.hasTouchscreen(this)) {
-                // This can't be collapsed without a touchscreen
-                appBar.setExpanded(false)
-            }
-        } else {
+        if (isTV) {
             findViewById<View>(R.id.refresh).setOnClickListener {
                 viewModel.fetchUpdates(true)
             }
@@ -216,11 +166,6 @@ class UpdatesActivity : AppCompatActivity(), UpdateImporter.Callbacks,
 
             else -> super.onOptionsItemSelected(item)
         }
-    }
-
-    override fun onSupportNavigateUp(): Boolean {
-        onBackPressedDispatcher.onBackPressed()
-        return true
     }
 
     @Deprecated("Deprecated in Java")
@@ -306,8 +251,8 @@ class UpdatesActivity : AppCompatActivity(), UpdateImporter.Callbacks,
         startService(intent)
     }
 
-    fun showSnackbar(stringId: Int, duration: Int) {
-        Snackbar.make(findViewById(R.id.main_container), stringId, duration).show()
+    fun showToast(stringId: Int, duration: Int) {
+        Toast.makeText(this, stringId, duration).show()
     }
 
     private fun observeViewModel() {
@@ -334,10 +279,10 @@ class UpdatesActivity : AppCompatActivity(), UpdateImporter.Callbacks,
                     viewModel.uiEvent.collect { event ->
                         when (event) {
                             is UpdateCheckViewModel.UiEvent.ShowMessage -> {
-                                showSnackbar(
+                                showToast(
                                     event.messageId,
-                                    if (event.long) Snackbar.LENGTH_LONG
-                                    else Snackbar.LENGTH_SHORT
+                                    if (event.long) Toast.LENGTH_LONG
+                                    else Toast.LENGTH_SHORT
                                 )
                             }
                         }
@@ -380,7 +325,7 @@ class UpdatesActivity : AppCompatActivity(), UpdateImporter.Callbacks,
                     msgId = R.string.snack_download_verified
                 }
                 if (msgId != -1) {
-                    showSnackbar(msgId, Snackbar.LENGTH_LONG)
+                    showToast(msgId, Toast.LENGTH_LONG)
                 }
             }
             adapter.notifyItemChanged(downloadId)
