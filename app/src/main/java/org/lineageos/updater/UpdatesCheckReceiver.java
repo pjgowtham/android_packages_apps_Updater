@@ -29,15 +29,12 @@ import android.util.Log;
 import androidx.core.app.NotificationCompat;
 import androidx.preference.PreferenceManager;
 
-import org.json.JSONException;
-import org.lineageos.updater.download.DownloadClient;
+import org.lineageos.updater.data.UpdateCheckRepository;
 import org.lineageos.updater.misc.Constants;
 import org.lineageos.updater.misc.Utils;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Date;
-import java.util.UUID;
 
 public class UpdatesCheckReceiver extends BroadcastReceiver {
 
@@ -73,53 +70,19 @@ public class UpdatesCheckReceiver extends BroadcastReceiver {
             return;
         }
 
-        final File json = Utils.getCachedUpdateList(context);
-        final File jsonNew = new File(json.getAbsolutePath() + UUID.randomUUID());
-        String url = Utils.getServerURL(context);
-        DownloadClient.DownloadCallback callback = new DownloadClient.DownloadCallback() {
-            @Override
-            public void onFailure(boolean cancelled) {
-                Log.e(TAG, "Could not download updates list, scheduling new check");
+        final UpdateCheckRepository repository = new UpdateCheckRepository(context);
+        new Thread(() -> {
+            try {
+                if (repository.fetchUpdatesBlocking()) {
+                    showNotification(context);
+                    updateRepeatingUpdatesCheck(context);
+                }
+                cancelUpdatesCheck(context);
+            } catch (IOException e) {
+                Log.e(TAG, "Could not fetch updates list, scheduling new check", e);
                 scheduleUpdatesCheck(context);
             }
-
-            @Override
-            public void onResponse(DownloadClient.Headers headers) {
-            }
-
-            @Override
-            public void onSuccess() {
-                try {
-                    if (json.exists() && Utils.checkForNewUpdates(json, jsonNew)) {
-                        showNotification(context);
-                        updateRepeatingUpdatesCheck(context);
-                    }
-                    //noinspection ResultOfMethodCallIgnored
-                    jsonNew.renameTo(json);
-                    long currentMillis = System.currentTimeMillis();
-                    preferences.edit()
-                            .putLong(Constants.PREF_LAST_UPDATE_CHECK, currentMillis)
-                            .apply();
-                    // In case we set a one-shot check because of a previous failure
-                    cancelUpdatesCheck(context);
-                } catch (IOException | JSONException e) {
-                    Log.e(TAG, "Could not parse list, scheduling new check", e);
-                    scheduleUpdatesCheck(context);
-                }
-            }
-        };
-
-        try {
-            DownloadClient downloadClient = new DownloadClient.Builder()
-                    .setUrl(url)
-                    .setDestination(jsonNew)
-                    .setDownloadCallback(callback)
-                    .build();
-            downloadClient.start();
-        } catch (IOException e) {
-            Log.e(TAG, "Could not fetch list, scheduling new check", e);
-            scheduleUpdatesCheck(context);
-        }
+        }).start();
     }
 
     private static void showNotification(Context context) {
