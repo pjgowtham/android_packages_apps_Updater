@@ -15,6 +15,7 @@
  */
 package org.lineageos.updater;
 
+import android.app.ActionBar;
 import android.app.Activity;
 import android.app.UiModeManager;
 import android.content.BroadcastReceiver;
@@ -31,22 +32,16 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
-import android.util.TypedValue;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
-import androidx.core.view.WindowInsetsCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.preference.PreferenceManager;
@@ -54,9 +49,8 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.SimpleItemAnimator;
 
+import com.android.settingslib.collapsingtoolbar.CollapsingToolbarBaseActivity;
 import com.android.settingslib.utils.ColorUtil;
-import com.google.android.material.appbar.AppBarLayout;
-import com.google.android.material.appbar.CollapsingToolbarLayout;
 
 import org.lineageos.updater.controller.UpdaterController;
 import org.lineageos.updater.controller.UpdaterService;
@@ -68,10 +62,9 @@ import org.lineageos.updater.model.UpdateInfo;
 import org.lineageos.updater.viewmodel.FetchResult;
 import org.lineageos.updater.viewmodel.UpdaterViewModel;
 
-import java.util.ArrayList;
 import java.util.List;
 
-public class UpdatesActivity extends AppCompatActivity implements
+public class UpdatesActivity extends CollapsingToolbarBaseActivity implements
         UpdateImporter.Callbacks {
 
     private static final String TAG = "UpdatesActivity";
@@ -174,33 +167,12 @@ public class UpdatesActivity extends AppCompatActivity implements
             }
         };
 
-        if (!mIsTV) {
-            Toolbar toolbar = findViewById(R.id.toolbar);
-            setSupportActionBar(toolbar);
-            ActionBar actionBar = getSupportActionBar();
-            if (actionBar != null) {
-                actionBar.setDisplayShowTitleEnabled(false);
-                actionBar.setDisplayHomeAsUpEnabled(true);
-                final int statusBarHeight;
-                TypedValue tv = new TypedValue();
-                if (getTheme().resolveAttribute(android.R.attr.actionBarSize, tv, true)) {
-                    statusBarHeight = TypedValue.complexToDimensionPixelSize(
-                            tv.data, getResources().getDisplayMetrics());
-                } else {
-                    statusBarHeight = 0;
-                }
-                RelativeLayout headerContainer = findViewById(R.id.header_container);
-                recyclerView.setOnApplyWindowInsetsListener((view, insets) -> {
-                    int top = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top;
-                    CollapsingToolbarLayout.LayoutParams lp =
-                            (CollapsingToolbarLayout.LayoutParams)
-                                    headerContainer.getLayoutParams();
-                    lp.topMargin = top + statusBarHeight;
-                    headerContainer.setLayoutParams(lp);
-                    return insets;
-                });
-            }
+        ActionBar actionBar = getActionBar();
+        if (actionBar != null) {
+            actionBar.setDisplayHomeAsUpEnabled(true);
         }
+
+        setTitle(getString(R.string.display_name));
 
         TextView headerTitle = findViewById(R.id.header_title);
         headerTitle.setText(getString(R.string.header_title_text,
@@ -218,34 +190,17 @@ public class UpdatesActivity extends AppCompatActivity implements
         headerSecurityPatch.setText(getString(R.string.header_android_security_update,
                 DeviceInfoUtils.getSecurityPatch()));
 
-        if (!mIsTV) {
-            // Switch between header title and appbar title minimizing overlaps
-            final CollapsingToolbarLayout collapsingToolbar = findViewById(R.id.collapsing_toolbar);
-            final AppBarLayout appBar = findViewById(R.id.app_bar);
-            appBar.addOnOffsetChangedListener(new AppBarLayout.OnOffsetChangedListener() {
-                boolean mIsShown = false;
-
-                @Override
-                public void onOffsetChanged(AppBarLayout appBarLayout, int verticalOffset) {
-                    int scrollRange = appBarLayout.getTotalScrollRange();
-                    if (!mIsShown && scrollRange + verticalOffset < 10) {
-                        collapsingToolbar.setTitle(getString(R.string.display_name));
-                        mIsShown = true;
-                    } else if (mIsShown && scrollRange + verticalOffset > 100) {
-                        collapsingToolbar.setTitle(null);
-                        mIsShown = false;
-                    }
-                }
-            });
-
-            if (!Utils.hasTouchscreen(this)) {
-                // This can't be collapsed without a touchscreen
-                appBar.setExpanded(false);
-            }
-        } else {
-            findViewById(R.id.refresh).setOnClickListener(v ->
-                    mViewModel.refreshUpdates());
+        if (mIsTV) {
+            findViewById(R.id.refresh).setOnClickListener(
+                    v -> mViewModel.refreshUpdates());
             findViewById(R.id.preferences).setOnClickListener(v -> showPreferencesDialog());
+        }
+
+        if (!Utils.hasTouchscreen(this)) {
+            // Collapsing toolbar can't be operated without a touchscreen
+            if (getAppBarLayout() != null) {
+                getAppBarLayout().setExpanded(false);
+            }
         }
 
         maybeShowWelcomeMessage();
@@ -290,6 +245,7 @@ public class UpdatesActivity extends AppCompatActivity implements
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_toolbar, menu);
         mMenu = menu;
+        setRefreshEnabled(!mViewModel.getUpdateCheckState().getValue().isRefreshing());
         return super.onCreateOptionsMenu(menu);
     }
 
@@ -312,12 +268,6 @@ public class UpdatesActivity extends AppCompatActivity implements
             return true;
         }
         return super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    public boolean onSupportNavigateUp() {
-        onBackPressed();
-        return true;
     }
 
     @Override

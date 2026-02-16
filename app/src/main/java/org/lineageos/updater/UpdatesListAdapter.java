@@ -40,7 +40,6 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.view.ContextThemeWrapper;
 import androidx.appcompat.view.menu.MenuBuilder;
 import androidx.appcompat.view.menu.MenuPopupHelper;
 import androidx.appcompat.widget.PopupMenu;
@@ -653,9 +652,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
         mSelectedDownload = update.getDownloadId();
         notifyItemChanged(update.getDownloadId());
 
-        ContextThemeWrapper wrapper = new ContextThemeWrapper(mActivity,
-                R.style.AppTheme_PopupMenuOverlapAnchor);
-        PopupMenu popupMenu = new PopupMenu(wrapper, anchor, Gravity.NO_GRAVITY,
+        PopupMenu popupMenu = new PopupMenu(mActivity, anchor, Gravity.NO_GRAVITY,
                 R.attr.actionOverflowMenuStyle, 0);
         popupMenu.inflate(R.menu.menu_action_mode);
 
@@ -688,7 +685,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
             return false;
         });
 
-        MenuPopupHelper helper = new MenuPopupHelper(wrapper, menu, anchor);
+        MenuPopupHelper helper = new MenuPopupHelper(mActivity, menu, anchor);
         helper.show();
     }
 
