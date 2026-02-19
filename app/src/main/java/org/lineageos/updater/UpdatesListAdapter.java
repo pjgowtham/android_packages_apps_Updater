@@ -345,6 +345,15 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
         notifyItemRangeChanged(position, getItemCount());
     }
 
+    public void addItem(String downloadId) {
+        if (mDownloadIds == null) {
+            mDownloadIds = new ArrayList<>();
+        }
+        mDownloadIds.add(0, downloadId);
+        notifyItemInserted(0);
+        notifyItemRangeChanged(0, getItemCount());
+    }
+
     private void downloadWithConfirmation(final String downloadId, boolean isResume) {
         if (mUpdaterController.hasActiveDownloads()) {
             new AlertDialog.Builder(mActivity)

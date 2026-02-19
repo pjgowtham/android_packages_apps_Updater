@@ -46,7 +46,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -65,7 +64,7 @@ import org.lineageos.updater.model.UpdateInfo;
 import org.lineageos.updater.model.UpdateStatus;
 import org.lineageos.updater.viewmodel.UpdateCheckViewModel;
 
-public class UpdatesActivity extends AppCompatActivity implements UpdateImporter.Callbacks {
+public class UpdatesActivity extends AppCompatActivity implements UpdateImporter.Callbacks, UpdaterController.StatusListener {
 
     private static final String TAG = "UpdatesActivity";
 
@@ -92,42 +91,6 @@ public class UpdatesActivity extends AppCompatActivity implements UpdateImporter
 
     private UpdateImporter mUpdateImporter;
     private AlertDialog importDialog;
-
-    private final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            String downloadId = intent.getStringExtra(UpdaterController.EXTRA_DOWNLOAD_ID);
-            if (downloadId == null) {
-                return;
-            }
-
-            UpdaterController controller = UpdaterController.getInstance(context);
-            if (UpdaterController.ACTION_UPDATE_STATUS.equals(intent.getAction())) {
-                UpdateInfo update = controller.getUpdate(downloadId);
-                if (update != null) {
-                    int msgId = -1;
-                    int status = update.getStatus();
-                    if (status == UpdateStatus.PAUSED_ERROR) {
-                        msgId = R.string.snack_download_failed;
-                    } else if (status == UpdateStatus.VERIFICATION_FAILED) {
-                        msgId = R.string.snack_download_verification_failed;
-                    } else if (status == UpdateStatus.VERIFIED) {
-                        msgId = R.string.snack_download_verified;
-                    }
-
-                    if (msgId != -1) {
-                        showSnackbar(msgId, Snackbar.LENGTH_LONG);
-                    }
-                }
-                mAdapter.notifyItemChanged(downloadId);
-            } else if (UpdaterController.ACTION_DOWNLOAD_PROGRESS.equals(intent.getAction()) ||
-                    UpdaterController.ACTION_INSTALL_PROGRESS.equals(intent.getAction())) {
-                mAdapter.notifyItemChanged(downloadId);
-            } else if (UpdaterController.ACTION_UPDATE_REMOVED.equals(intent.getAction())) {
-                mAdapter.removeItem(downloadId);
-            }
-        }
-    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -238,17 +201,12 @@ public class UpdatesActivity extends AppCompatActivity implements UpdateImporter
     @Override
     protected void onStart() {
         super.onStart();
-        IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction(UpdaterController.ACTION_UPDATE_STATUS);
-        intentFilter.addAction(UpdaterController.ACTION_DOWNLOAD_PROGRESS);
-        intentFilter.addAction(UpdaterController.ACTION_INSTALL_PROGRESS);
-        intentFilter.addAction(UpdaterController.ACTION_UPDATE_REMOVED);
-        LocalBroadcastManager.getInstance(this).registerReceiver(mBroadcastReceiver, intentFilter);
+        UpdaterController.getInstance(this).addListener(this);
     }
 
     @Override
     protected void onStop() {
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(mBroadcastReceiver);
+        UpdaterController.getInstance(this).removeListener(this);
         super.onStop();
     }
 
@@ -429,5 +387,44 @@ public class UpdatesActivity extends AppCompatActivity implements UpdateImporter
                         .putBoolean(Constants.PREF_HAS_SEEN_WELCOME_MESSAGE, true)
                         .apply())
                 .show();
+    }
+
+    @Override
+    public void onUpdateStatusChanged(String downloadId) {
+        runOnUiThread(() -> {
+            UpdaterController controller = UpdaterController.getInstance(this);
+            UpdateInfo update = controller.getUpdate(downloadId);
+            if (update != null) {
+                int msgId = -1;
+                UpdateStatus status = update.getStatus();
+                if (status == UpdateStatus.PAUSED_ERROR) {
+                    msgId = R.string.snack_download_failed;
+                } else if (status == UpdateStatus.VERIFICATION_FAILED) {
+                    msgId = R.string.snack_download_verification_failed;
+                } else if (status == UpdateStatus.VERIFIED) {
+                    msgId = R.string.snack_download_verified;
+                }
+
+                if (msgId != -1) {
+                    showSnackbar(msgId, Snackbar.LENGTH_LONG);
+                }
+            }
+            mAdapter.notifyItemChanged(downloadId);
+        });
+    }
+
+    @Override
+    public void onDownloadProgressChanged(String downloadId) {
+        runOnUiThread(() -> mAdapter.notifyItemChanged(downloadId));
+    }
+
+    @Override
+    public void onInstallProgressChanged(String downloadId) {
+        runOnUiThread(() -> mAdapter.notifyItemChanged(downloadId));
+    }
+
+    @Override
+    public void onUpdateRemoved(String downloadId) {
+        runOnUiThread(() -> mAdapter.removeItem(downloadId));
     }
 }

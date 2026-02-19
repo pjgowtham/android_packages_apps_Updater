@@ -19,10 +19,7 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
-import android.content.BroadcastReceiver;
-import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.ServiceInfo;
 import android.os.Binder;
@@ -32,7 +29,6 @@ import android.text.format.Formatter;
 import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.preference.PreferenceManager;
 
 import org.lineageos.updater.R;
@@ -50,7 +46,7 @@ import java.io.IOException;
 import java.text.DateFormat;
 import java.text.NumberFormat;
 
-public class UpdaterService extends Service {
+public class UpdaterService extends Service implements UpdaterController.StatusListener {
 
     private static final String TAG = "UpdaterService";
 
@@ -78,7 +74,6 @@ public class UpdaterService extends Service {
     private final IBinder mBinder = new LocalBinder();
     private boolean mHasClients;
 
-    private BroadcastReceiver mBroadcastReceiver;
     private NotificationCompat.Builder mNotificationBuilder;
     private NotificationManager mNotificationManager;
     private NotificationCompat.BigTextStyle mNotificationStyle;
@@ -108,51 +103,11 @@ public class UpdaterService extends Service {
         PendingIntent intent = PendingIntent.getActivity(this, 0, notificationIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         mNotificationBuilder.setContentIntent(intent);
-
-        mBroadcastReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                String downloadId = intent.getStringExtra(UpdaterController.EXTRA_DOWNLOAD_ID);
-                if (UpdaterController.ACTION_UPDATE_STATUS.equals(intent.getAction())) {
-                    UpdateInfo update = mUpdaterController.getUpdate(downloadId);
-                    setNotificationTitle(update);
-                    Bundle extras = new Bundle();
-                    extras.putString(UpdaterController.EXTRA_DOWNLOAD_ID, downloadId);
-                    mNotificationBuilder.setExtras(extras);
-                    handleUpdateStatusChange(update);
-                } else if (UpdaterController.ACTION_DOWNLOAD_PROGRESS.equals(intent.getAction())) {
-                    UpdateInfo update = mUpdaterController.getUpdate(downloadId);
-                    handleDownloadProgressChange(update);
-                } else if (UpdaterController.ACTION_INSTALL_PROGRESS.equals(intent.getAction())) {
-                    UpdateInfo update = mUpdaterController.getUpdate(downloadId);
-                    setNotificationTitle(update);
-                    handleInstallProgress(update);
-                } else if (UpdaterController.ACTION_UPDATE_REMOVED.equals(intent.getAction())) {
-                    final boolean isLocalUpdate = UpdateInfo.LOCAL_ID.equals(downloadId);
-                    Bundle extras = mNotificationBuilder.getExtras();
-                    if (!isLocalUpdate && downloadId != null && downloadId.equals(
-                            extras.getString(UpdaterController.EXTRA_DOWNLOAD_ID))) {
-                        mNotificationBuilder.setExtras(null);
-                        UpdateInfo update = mUpdaterController.getUpdate(downloadId);
-                        if (update.getStatus() != UpdateStatus.UPDATED_NEED_REBOOT) {
-                            mNotificationManager.cancel(NOTIFICATION_ID);
-                        }
-                    }
-                }
-            }
-        };
-        IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction(UpdaterController.ACTION_DOWNLOAD_PROGRESS);
-        intentFilter.addAction(UpdaterController.ACTION_INSTALL_PROGRESS);
-        intentFilter.addAction(UpdaterController.ACTION_UPDATE_STATUS);
-        intentFilter.addAction(UpdaterController.ACTION_UPDATE_REMOVED);
-        LocalBroadcastManager.getInstance(this).registerReceiver(mBroadcastReceiver, intentFilter);
-
+        mUpdaterController.addListener(this);
     }
 
-    @Override
     public void onDestroy() {
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(mBroadcastReceiver);
+        mUpdaterController.removeListener(this);
         super.onDestroy();
     }
 
@@ -610,6 +565,42 @@ public class UpdaterService extends Service {
         boolean isLocal = UpdateInfo.LOCAL_ID.equals(downloadId);
         if (deleteUpdate || isLocal) {
             mUpdaterController.deleteUpdate(downloadId);
+        }
+    }
+    @Override
+    public void onUpdateStatusChanged(String downloadId) {
+        UpdateInfo update = mUpdaterController.getUpdate(downloadId);
+        setNotificationTitle(update);
+        Bundle extras = new Bundle();
+        extras.putString(UpdaterController.EXTRA_DOWNLOAD_ID, downloadId);
+        mNotificationBuilder.setExtras(extras);
+        handleUpdateStatusChange(update);
+    }
+
+    @Override
+    public void onDownloadProgressChanged(String downloadId) {
+        UpdateInfo update = mUpdaterController.getUpdate(downloadId);
+        handleDownloadProgressChange(update);
+    }
+
+    @Override
+    public void onInstallProgressChanged(String downloadId) {
+        UpdateInfo update = mUpdaterController.getUpdate(downloadId);
+        setNotificationTitle(update);
+        handleInstallProgress(update);
+    }
+
+    @Override
+    public void onUpdateRemoved(String downloadId) {
+        final boolean isLocalUpdate = UpdateInfo.LOCAL_ID.equals(downloadId);
+        Bundle extras = mNotificationBuilder.getExtras();
+        if (!isLocalUpdate && downloadId != null && downloadId.equals(
+                extras.getString(UpdaterController.EXTRA_DOWNLOAD_ID))) {
+            mNotificationBuilder.setExtras(null);
+            UpdateInfo update = mUpdaterController.getUpdate(downloadId);
+            if (update == null || update.getStatus() != UpdateStatus.INSTALLED) {
+                mNotificationManager.cancel(NOTIFICATION_ID);
+            }
         }
     }
 }

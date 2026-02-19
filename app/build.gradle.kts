@@ -83,7 +83,6 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.cardview)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
-    implementation(libs.androidx.localbroadcastmanager)
     implementation(libs.androidx.preference)
     implementation(libs.androidx.recyclerview)
     implementation(libs.material)

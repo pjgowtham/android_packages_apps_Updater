@@ -17,13 +17,10 @@ package org.lineageos.updater.controller;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.content.Intent;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.PowerManager;
 import android.os.SystemClock;
 import android.util.Log;
-
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import org.lineageos.updater.UpdatesDbHelper;
 import org.lineageos.updater.download.DownloadClient;
@@ -39,6 +36,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class UpdaterController {
 
@@ -48,6 +46,13 @@ public class UpdaterController {
     public static final String ACTION_UPDATE_STATUS = "action_update_status_change";
     public static final String EXTRA_DOWNLOAD_ID = "extra_download_id";
 
+    public interface StatusListener {
+        void onUpdateStatusChanged(String downloadId);
+        void onDownloadProgressChanged(String downloadId);
+        void onInstallProgressChanged(String downloadId);
+        void onUpdateRemoved(String downloadId);
+    }
+
     private final String TAG = "UpdaterController";
 
     private static UpdaterController sUpdaterController;
@@ -55,7 +60,7 @@ public class UpdaterController {
     private static final int MAX_REPORT_INTERVAL_MS = 1000;
 
     private final Context mContext;
-    private final LocalBroadcastManager mBroadcastManager;
+    private final List<StatusListener> mListeners = new CopyOnWriteArrayList<>();
     private final UpdatesDbHelper mUpdatesDbHelper;
 
     private final PowerManager.WakeLock mWakeLock;
@@ -73,7 +78,6 @@ public class UpdaterController {
     }
 
     private UpdaterController(Context context) {
-        mBroadcastManager = LocalBroadcastManager.getInstance(context);
         mUpdatesDbHelper = new UpdatesDbHelper(context);
         mDownloadRoot = Utils.getDownloadPath(context);
         PowerManager powerManager = context.getSystemService(PowerManager.class);
@@ -99,31 +103,35 @@ public class UpdaterController {
     private final Map<String, DownloadEntry> mDownloads = new HashMap<>();
 
     void notifyUpdateChange(String downloadId) {
-        Intent intent = new Intent();
-        intent.setAction(ACTION_UPDATE_STATUS);
-        intent.putExtra(EXTRA_DOWNLOAD_ID, downloadId);
-        mBroadcastManager.sendBroadcast(intent);
+        for (StatusListener listener : mListeners) {
+            listener.onUpdateStatusChanged(downloadId);
+        }
     }
 
     void notifyUpdateDelete(String downloadId) {
-        Intent intent = new Intent();
-        intent.setAction(ACTION_UPDATE_REMOVED);
-        intent.putExtra(EXTRA_DOWNLOAD_ID, downloadId);
-        mBroadcastManager.sendBroadcast(intent);
+        for (StatusListener listener : mListeners) {
+            listener.onUpdateRemoved(downloadId);
+        }
     }
 
     void notifyDownloadProgress(String downloadId) {
-        Intent intent = new Intent();
-        intent.setAction(ACTION_DOWNLOAD_PROGRESS);
-        intent.putExtra(EXTRA_DOWNLOAD_ID, downloadId);
-        mBroadcastManager.sendBroadcast(intent);
+        for (StatusListener listener : mListeners) {
+            listener.onDownloadProgressChanged(downloadId);
+        }
     }
 
     void notifyInstallProgress(String downloadId) {
-        Intent intent = new Intent();
-        intent.setAction(ACTION_INSTALL_PROGRESS);
-        intent.putExtra(EXTRA_DOWNLOAD_ID, downloadId);
-        mBroadcastManager.sendBroadcast(intent);
+        for (StatusListener listener : mListeners) {
+            listener.onInstallProgressChanged(downloadId);
+        }
+    }
+
+    public void addListener(StatusListener listener) {
+        mListeners.add(listener);
+    }
+
+    public void removeListener(StatusListener listener) {
+        mListeners.remove(listener);
     }
 
     private void tryReleaseWakelock() {
