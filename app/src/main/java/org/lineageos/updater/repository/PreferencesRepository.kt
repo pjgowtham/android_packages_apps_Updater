@@ -27,6 +27,7 @@ data class PreferencesData(
     val autoDeleteUpdates: Boolean,
     val meteredNetworkWarning: Boolean,
     val abPerfMode: Boolean,
+    val abStreamingMode: Boolean,
     val updateRecovery: Boolean,
 )
 
@@ -80,6 +81,10 @@ class PreferencesRepository(private val context: Context) {
         }
     }
 
+    fun setAbStreamingMode(enabled: Boolean) {
+        prefs.edit { putBoolean(Constants.PREF_AB_STREAMING_MODE, enabled) }
+    }
+
     fun setUpdateRecovery(enabled: Boolean) {
         DeviceInfoUtils.isRecoveryUpdateEnabled = enabled
         prefs.edit { putBoolean(Constants.PREF_UPDATE_RECOVERY, enabled) }
@@ -95,6 +100,7 @@ class PreferencesRepository(private val context: Context) {
         autoDeleteUpdates = prefs.getBoolean(Constants.PREF_AUTO_DELETE_UPDATES, false),
         meteredNetworkWarning = prefs.getBoolean(Constants.PREF_METERED_NETWORK_WARNING, true),
         abPerfMode = prefs.getBoolean(Constants.PREF_AB_PERF_MODE, false),
+        abStreamingMode = prefs.getBoolean(Constants.PREF_AB_STREAMING_MODE, false),
         updateRecovery = prefs.getBoolean(
             Constants.PREF_UPDATE_RECOVERY, DeviceInfoUtils.isRecoveryUpdateEnabled
         ),
