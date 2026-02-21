@@ -15,7 +15,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.conflate
-import org.lineageos.updater.UpdatesCheckReceiver
+import org.lineageos.updater.worker.UpdateCheckWorker
 import org.lineageos.updater.misc.Constants
 import org.lineageos.updater.misc.Constants.CheckInterval
 import org.lineageos.updater.misc.DeviceInfoUtils
@@ -23,7 +23,6 @@ import org.lineageos.updater.misc.DeviceInfoUtils
 data class PreferencesData(
     val periodicCheckEnabled: Boolean,
     val periodicCheckInterval: CheckInterval,
-    val nextCheckEpochMillis: Long,
     val autoDeleteUpdates: Boolean,
     val meteredNetworkWarning: Boolean,
     val abPerfMode: Boolean,
@@ -52,16 +51,15 @@ class PreferencesRepository(private val context: Context) {
     fun setPeriodicCheckEnabled(enabled: Boolean) {
         prefs.edit { putBoolean(Constants.PREF_PERIODIC_CHECK_ENABLED, enabled) }
         if (enabled) {
-            UpdatesCheckReceiver.scheduleRepeatingUpdatesCheck(context)
+            UpdateCheckWorker.schedule(context)
         } else {
-            UpdatesCheckReceiver.cancelRepeatingUpdatesCheck(context)
-            UpdatesCheckReceiver.cancelUpdatesCheck(context)
+            UpdateCheckWorker.cancel(context)
         }
     }
 
     fun setPeriodicCheckInterval(interval: CheckInterval) {
         prefs.edit { putString(CheckInterval.PREF_KEY, interval.value) }
-        UpdatesCheckReceiver.updateRepeatingUpdatesCheck(context)
+        UpdateCheckWorker.reschedule(context)
     }
 
     fun setAutoDeleteUpdates(enabled: Boolean) {
@@ -96,7 +94,6 @@ class PreferencesRepository(private val context: Context) {
             context,
             prefs.getString(CheckInterval.PREF_KEY, null)
         ),
-        nextCheckEpochMillis = prefs.getLong(Constants.PREF_NEXT_UPDATE_CHECK, -1L),
         autoDeleteUpdates = prefs.getBoolean(Constants.PREF_AUTO_DELETE_UPDATES, false),
         meteredNetworkWarning = prefs.getBoolean(Constants.PREF_METERED_NETWORK_WARNING, true),
         abPerfMode = prefs.getBoolean(Constants.PREF_AB_PERF_MODE, false),

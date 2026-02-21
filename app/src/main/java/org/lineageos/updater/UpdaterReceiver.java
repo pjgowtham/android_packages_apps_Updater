@@ -31,6 +31,7 @@ import org.lineageos.updater.controller.UpdaterService;
 import org.lineageos.updater.misc.Constants;
 import org.lineageos.updater.misc.DeviceInfoUtils;
 import org.lineageos.updater.misc.StringGenerator;
+import org.lineageos.updater.worker.UpdateCheckWorker;
 
 import java.text.DateFormat;
 
@@ -41,6 +42,7 @@ public class UpdaterReceiver extends BroadcastReceiver {
 
     private static final String INSTALL_ERROR_NOTIFICATION_CHANNEL =
             "install_error_notification_channel";
+    private static final int NOTIFICATION_ID_INSTALL_ERROR = 101;
 
     private static boolean isUpdateSuccessful(Context context) {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
@@ -78,7 +80,7 @@ public class UpdaterReceiver extends BroadcastReceiver {
 
         NotificationManager nm = context.getSystemService(NotificationManager.class);
         nm.createNotificationChannel(notificationChannel);
-        nm.notify(0, builder.build());
+        nm.notify(NOTIFICATION_ID_INSTALL_ERROR, builder.build());
     }
 
     @Override
@@ -87,6 +89,9 @@ public class UpdaterReceiver extends BroadcastReceiver {
             PowerManager pm = context.getSystemService(PowerManager.class);
             pm.reboot(null);
         } else if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
+            // Schedule periodic update checks via WorkManager
+            UpdateCheckWorker.schedule(context);
+
             SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(context);
             String downloadId = pref.getString(Constants.PREF_NEEDS_REBOOT_ID, null);
             pref.edit().remove(Constants.PREF_NEEDS_REBOOT_ID).apply();

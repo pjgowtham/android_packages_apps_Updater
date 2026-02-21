@@ -5,9 +5,7 @@
 
 package org.lineageos.updater
 
-import android.content.Context
 import android.os.Bundle
-import android.text.format.DateFormat
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.activity.compose.setContent
@@ -35,8 +33,7 @@ import org.lineageos.updater.misc.DeviceInfoUtils
 import org.lineageos.updater.misc.Utils
 import org.lineageos.updater.repository.PreferencesData
 import org.lineageos.updater.repository.PreferencesRepository
-import java.text.DateFormat as JavaDateFormat
-import java.util.Date
+
 
 class PreferencesActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -71,7 +68,6 @@ private fun PreferencesScreen() {
         initialValue = PreferencesData(
             periodicCheckEnabled = true,
             periodicCheckInterval = CheckInterval.WEEKLY,
-            nextCheckEpochMillis = -1L,
             autoDeleteUpdates = false,
             meteredNetworkWarning = true,
             abPerfMode = false,
@@ -83,11 +79,7 @@ private fun PreferencesScreen() {
     RegularScaffold(title = stringResource(R.string.menu_preferences)) {
         Category(title = stringResource(R.string.pref_category_background_sync)) {
             val autoUpdatesCheckTitle = stringResource(R.string.menu_auto_updates_check)
-            val autoUpdatesCheckSummary = if (state.nextCheckEpochMillis > 0) {
-                formatNextCheckTime(context, state.nextCheckEpochMillis)
-            } else {
-                stringResource(R.string.menu_auto_updates_check_summary)
-            }
+            val autoUpdatesCheckSummary = stringResource(R.string.menu_auto_updates_check_summary)
             SwitchPreference(object : SwitchPreferenceModel {
                 override val title = autoUpdatesCheckTitle
                 override val summary = { autoUpdatesCheckSummary }
@@ -157,13 +149,6 @@ private fun PreferencesScreen() {
     }
 }
 
-private fun formatNextCheckTime(context: Context, epochMillis: Long): String {
-    if (epochMillis <= 0L) return ""
-    val date = Date(epochMillis)
-    val dateStr = JavaDateFormat.getDateInstance(JavaDateFormat.LONG).format(date)
-    val timeStr = DateFormat.getTimeFormat(context).format(date)
-    return context.getString(R.string.menu_next_check_time, dateStr, timeStr)
-}
 
 /** Interval selector, greyed out when periodic check is disabled. */
 @Composable

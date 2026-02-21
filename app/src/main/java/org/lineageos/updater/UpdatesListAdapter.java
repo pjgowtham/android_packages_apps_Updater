@@ -321,7 +321,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
 
     @Override
     public int getItemCount() {
-        return mDownloadIds == null ? 0 : mDownloadIds.size();
+        return (mDownloadIds == null || mUpdaterController == null) ? 0 : mDownloadIds.size();
     }
 
     public void setData(List<String> downloadIds) {
