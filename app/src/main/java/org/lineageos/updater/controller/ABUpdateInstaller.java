@@ -208,6 +208,24 @@ class ABUpdateInstaller {
             return;
         }
 
+        String zipFileUri = "file://" + file.getAbsolutePath();
+        applyPayload(downloadId, zipFileUri, offset, 0, headerKeyValuePairs);
+    }
+
+    public void installStreaming(String downloadId, String url,
+                                 long payloadOffset, long payloadSize, String[] headerKeyValuePairs) {
+        if (isInstallingUpdate(mContext)) {
+            Log.e(TAG, "Already installing an update");
+            return;
+        }
+
+        applyPayload(downloadId, url, payloadOffset, payloadSize, headerKeyValuePairs);
+    }
+
+    private void applyPayload(String downloadId, String url, long offset, long size,
+                              String[] headerKeyValuePairs) {
+        mDownloadId = downloadId;
+
         if (!mBound) {
             mBound = mUpdateEngine.bind(mUpdateEngineCallback);
             if (!mBound) {
@@ -224,9 +242,8 @@ class ABUpdateInstaller {
                 .getBoolean(Constants.PREF_AB_PERF_MODE, false);
         mUpdateEngine.setPerformanceMode(enableABPerfMode);
 
-        String zipFileUri = "file://" + file.getAbsolutePath();
         try {
-            mUpdateEngine.applyPayload(zipFileUri, offset, 0, headerKeyValuePairs);
+            mUpdateEngine.applyPayload(url, offset, size, headerKeyValuePairs);
         } catch (ServiceSpecificException e) {
             if (e.errorCode == 66 /* kUpdateAlreadyInstalled */) {
                 installationDone(true);

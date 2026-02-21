@@ -62,6 +62,7 @@ private fun PreferencesScreen() {
             autoDeleteUpdates = true,
             meteredNetworkWarning = true,
             abPerfMode = false,
+            abStreamingMode = false,
             updateRecovery = false,
         )
     )
@@ -85,14 +86,16 @@ private fun PreferencesScreen() {
         }
 
         Category(title = stringResource(R.string.pref_category_download_install)) {
-            val autoDeleteTitle = stringResource(R.string.menu_auto_delete_updates)
-            val autoDeleteSummary = stringResource(R.string.menu_auto_delete_updates_summary)
-            SwitchPreference(object : SwitchPreferenceModel {
-                override val title = autoDeleteTitle
-                override val summary = { autoDeleteSummary }
-                override val checked = { state.autoDeleteUpdates }
-                override val onCheckedChange = repository::setAutoDeleteUpdates
-            })
+            if (!isABDevice) {
+                val autoDeleteTitle = stringResource(R.string.menu_auto_delete_updates)
+                val autoDeleteSummary = stringResource(R.string.menu_auto_delete_updates_summary)
+                SwitchPreference(object : SwitchPreferenceModel {
+                    override val title = autoDeleteTitle
+                    override val summary = { autoDeleteSummary }
+                    override val checked = { state.autoDeleteUpdates }
+                    override val onCheckedChange = repository::setAutoDeleteUpdates
+                })
+            }
 
             val meteredTitle = stringResource(R.string.menu_metered_network_warning)
             val meteredSummary = stringResource(R.string.menu_metered_network_warning_summary)
@@ -111,6 +114,15 @@ private fun PreferencesScreen() {
                     override val summary = { abPerfSummary }
                     override val checked = { state.abPerfMode }
                     override val onCheckedChange = repository::setAbPerfMode
+                })
+
+                val streamingTitle = stringResource(R.string.menu_ab_streaming_mode)
+                val streamingSummary = stringResource(R.string.menu_ab_streaming_mode_summary)
+                SwitchPreference(object : SwitchPreferenceModel {
+                    override val title = streamingTitle
+                    override val summary = { streamingSummary }
+                    override val checked = { state.abStreamingMode }
+                    override val onCheckedChange = repository::setAbStreamingMode
                 })
             }
 

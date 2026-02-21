@@ -41,6 +41,8 @@ import org.lineageos.updater.UpdatesActivity;
 import org.lineageos.updater.misc.Constants;
 import org.lineageos.updater.misc.StringGenerator;
 import org.lineageos.updater.misc.Utils;
+import org.lineageos.updater.download.StreamingMetadata;
+import org.lineageos.updater.download.ZipMetadataFetcher;
 import org.lineageos.updater.model.UpdateInfo;
 import org.lineageos.updater.model.UpdateStatus;
 
@@ -56,6 +58,7 @@ public class UpdaterService extends Service {
     public static final String EXTRA_DOWNLOAD_ID = "extra_download_id";
     public static final String EXTRA_DOWNLOAD_CONTROL = "extra_download_control";
     public static final String ACTION_INSTALL_UPDATE = "action_install_update";
+    public static final String ACTION_INSTALL_STREAMING = "action_install_streaming";
     public static final String ACTION_INSTALL_STOP = "action_install_stop";
 
     public static final String ACTION_INSTALL_SUSPEND = "action_install_suspend";
@@ -225,6 +228,37 @@ public class UpdaterService extends Service {
                         .withStatus(UpdateStatus.INSTALLATION_FAILED));
                 mUpdaterController.notifyUpdateChange(downloadId);
             }
+        } else if (ACTION_INSTALL_STREAMING.equals(intent.getAction())) {
+            String downloadId = intent.getStringExtra(EXTRA_DOWNLOAD_ID);
+            UpdateInfo update = mUpdaterController.getUpdate(downloadId);
+            if (update == null) {
+                Log.e(TAG, "Update not found: " + downloadId);
+                return START_NOT_STICKY;
+            }
+            if (!update.getAvailableOnline()) {
+                Log.e(TAG, "Update not available online: " + downloadId);
+                return START_NOT_STICKY;
+            }
+            mUpdaterController.setUpdate(downloadId, mUpdaterController.getUpdate(downloadId)
+                    .withStatus(UpdateStatus.INSTALLING));
+            mUpdaterController.notifyUpdateChange(downloadId);
+            final String downloadUrl = update.getDownloadUrl();
+            new Thread(() -> {
+                try {
+                    StreamingMetadata metadata =
+                            ZipMetadataFetcher.fetchMetadataSync(downloadUrl);
+                    ABUpdateInstaller installer = ABUpdateInstaller.getInstance(
+                            UpdaterService.this, mUpdaterController);
+                    installer.installStreaming(downloadId, metadata.getStreamUrl(),
+                            metadata.getPayloadOffset(), metadata.getPayloadSize(),
+                            metadata.getHeaderKeyValuePairs().toArray(new String[0]));
+                } catch (Exception e) {
+                    Log.e(TAG, "Could not stream update", e);
+                    mUpdaterController.setUpdate(downloadId, mUpdaterController.getUpdate(downloadId)
+                            .withStatus(UpdateStatus.INSTALLATION_FAILED));
+                    mUpdaterController.notifyUpdateChange(downloadId);
+                }
+            }).start();
         } else if (ACTION_INSTALL_STOP.equals(intent.getAction())) {
             if (UpdateInstaller.isInstalling()) {
                 UpdateInstaller installer = UpdateInstaller.getInstance(this,

@@ -166,6 +166,13 @@ public class Utils {
         context.startService(intent);
     }
 
+    public static void triggerStreamingUpdate(Context context, String downloadId) {
+        final Intent intent = new Intent(context, UpdaterService.class);
+        intent.setAction(UpdaterService.ACTION_INSTALL_STREAMING);
+        intent.putExtra(UpdaterService.EXTRA_DOWNLOAD_ID, downloadId);
+        context.startService(intent);
+    }
+
     public static boolean isNetworkAvailable(Context context) {
         ConnectivityManager cm = context.getSystemService(ConnectivityManager.class);
         Network activeNetwork = cm.getActiveNetwork();
