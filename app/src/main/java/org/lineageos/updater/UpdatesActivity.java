@@ -33,7 +33,6 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
 import android.util.TypedValue;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -41,7 +40,6 @@ import android.view.animation.Animation;
 import android.view.animation.LinearInterpolator;
 import android.view.animation.RotateAnimation;
 import android.widget.RelativeLayout;
-import android.widget.Spinner;
 import android.widget.TextView;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -49,7 +47,6 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.widget.SwitchCompat;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
@@ -436,7 +433,7 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
             long millis = System.currentTimeMillis();
             preferences.edit().putLong(Constants.PREF_LAST_UPDATE_CHECK, millis).apply();
             updateLastCheckedString();
-            if (json.exists() && Utils.isUpdateCheckEnabled(this) &&
+            if (json.exists() && preferences.getBoolean(Constants.PREF_PERIODIC_CHECK_ENABLED, true) &&
                     Utils.checkForNewUpdates(json, jsonNew)) {
                 UpdatesCheckReceiver.updateRepeatingUpdatesCheck(this);
             }
@@ -587,63 +584,9 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
         }
     }
 
-    @SuppressLint("ClickableViewAccessibility")
     private void showPreferencesDialog() {
-        View view = LayoutInflater.from(this).inflate(R.layout.preferences_dialog, null);
-        Spinner autoCheckInterval = view.findViewById(R.id.preferences_auto_updates_check_interval);
-        SwitchCompat autoDelete = view.findViewById(R.id.preferences_auto_delete_updates);
-        SwitchCompat meteredNetworkWarning = view.findViewById(
-                R.id.preferences_metered_network_warning);
-        SwitchCompat abPerfMode = view.findViewById(R.id.preferences_ab_perf_mode);
-        SwitchCompat updateRecovery = view.findViewById(R.id.preferences_update_recovery);
-
-        if (!DeviceInfoUtils.isABDevice()) {
-            abPerfMode.setVisibility(View.GONE);
-        }
-
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        autoCheckInterval.setSelection(Utils.getUpdateCheckSetting(this));
-        autoDelete.setChecked(prefs.getBoolean(Constants.PREF_AUTO_DELETE_UPDATES, false));
-        meteredNetworkWarning.setChecked(prefs.getBoolean(Constants.PREF_METERED_NETWORK_WARNING, true));
-        abPerfMode.setChecked(prefs.getBoolean(Constants.PREF_AB_PERF_MODE, false));
-
-        // Only show update recovery option for non-AB devices with recovery update script
-        if (Utils.isRecoveryUpdateExecPresent()) {
-            updateRecovery.setVisibility(View.VISIBLE);
-            // Obtain and apply the user preference from SetupWizard.
-            updateRecovery.setChecked(DeviceInfoUtils.isRecoveryUpdateEnabled());
-        } // else: remains GONE (default from XML)
-
-        new AlertDialog.Builder(this)
-                .setTitle(R.string.menu_preferences)
-                .setView(view)
-                .setOnDismissListener(dialogInterface -> {
-                    prefs.edit()
-                            .putInt(Constants.PREF_AUTO_UPDATES_CHECK_INTERVAL,
-                                    autoCheckInterval.getSelectedItemPosition())
-                            .putBoolean(Constants.PREF_AUTO_DELETE_UPDATES, autoDelete.isChecked())
-                            .putBoolean(Constants.PREF_METERED_NETWORK_WARNING,
-                                    meteredNetworkWarning.isChecked())
-                            .putBoolean(Constants.PREF_AB_PERF_MODE, abPerfMode.isChecked())
-                            .apply();
-
-                    if (Utils.isUpdateCheckEnabled(this)) {
-                        UpdatesCheckReceiver.scheduleRepeatingUpdatesCheck(this);
-                    } else {
-                        UpdatesCheckReceiver.cancelRepeatingUpdatesCheck(this);
-                        UpdatesCheckReceiver.cancelUpdatesCheck(this);
-                    }
-
-                    if (DeviceInfoUtils.isABDevice()) {
-                        boolean enableABPerfMode = abPerfMode.isChecked();
-                        mUpdaterService.getUpdaterController().setPerformanceMode(enableABPerfMode);
-                    }
-                    if (Utils.isRecoveryUpdateExecPresent()) {
-                        boolean enableRecoveryUpdate = updateRecovery.isChecked();
-                        DeviceInfoUtils.setRecoveryUpdateEnabled(enableRecoveryUpdate);
-                    }
-                })
-                .show();
+        Intent intent = new Intent(this, PreferencesActivity.class);
+        startActivity(intent);
     }
 
     private void maybeShowWelcomeMessage() {
