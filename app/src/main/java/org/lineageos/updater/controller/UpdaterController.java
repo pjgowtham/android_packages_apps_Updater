@@ -621,13 +621,6 @@ public class UpdaterController {
         return ABUpdateInstaller.isWaitingForReboot(mContext, downloadId);
     }
 
-    public void setPerformanceMode(boolean enable) {
-        if (!DeviceInfoUtils.isABDevice()) {
-            return;
-        }
-        ABUpdateInstaller.getInstance(mContext, this).setPerformanceMode(enable);
-    }
-
     private void pauseActiveDownloads() {
         for (DownloadEntry entry : mDownloads.values()) {
             if (isDownloading(entry.mUpdate.getDownloadId())) {
