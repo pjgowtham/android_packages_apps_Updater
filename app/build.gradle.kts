@@ -108,7 +108,6 @@ configure<GenerateBpPluginExtension> {
         when {
             module.group.startsWith("androidx") -> true
             module.group.startsWith("org.jetbrains") -> true
-            module.group == "com.google.android.material" -> true
             module.group == "com.google.errorprone" -> true
             module.group == "com.google.guava" -> true
             module.group == "junit" -> true
