@@ -6,9 +6,8 @@
 package org.lineageos.updater.misc
 
 import android.os.SystemProperties
-import com.android.settingslib.DeviceInfoUtils as SettingsLibDeviceInfoUtils
 
-object DeviceInfoUtils : SettingsLibDeviceInfoUtils() {
+object DeviceInfoUtils : com.android.settingslib.DeviceInfoUtils() {
 
     private const val PROP_AB_DEVICE = "ro.build.ab_update"
     private const val PROP_ALLOW_MAJOR_UPGRADES = "lineage.updater.allow_major_upgrades"
@@ -24,26 +23,23 @@ object DeviceInfoUtils : SettingsLibDeviceInfoUtils() {
 
     @JvmStatic
     val buildDateTimestamp: Long
-        get() = SystemProperties.getLong(PROP_BUILD_DATE, 0)
+        get() = 1764527400L // SystemProperties.getLong(PROP_BUILD_DATE, 0)
 
     @JvmStatic
     val buildVersion: String
-        get() = SystemProperties.get(PROP_BUILD_VERSION, "")
+        get() = "23.0" // SystemProperties.get(PROP_BUILD_VERSION, "")
 
     @JvmStatic
     val buildVersionIncremental: String
-        get() = SystemProperties.get(PROP_BUILD_VERSION_INCREMENTAL, "")
+        get() = "000000" // SystemProperties.get(PROP_BUILD_VERSION_INCREMENTAL, "")
 
     @JvmStatic
     val device: String
-        get() = SystemProperties.get(
-            PROP_NEXT_DEVICE,
-            SystemProperties.get(PROP_DEVICE)
-        )
+        get() = "lemonadep" // SystemProperties.get(PROP_NEXT_DEVICE, SystemProperties.get(PROP_DEVICE))
 
     @JvmStatic
     val releaseType: String
-        get() = SystemProperties.get(PROP_RELEASE_TYPE)
+        get() = "nightly" // SystemProperties.get(PROP_RELEASE_TYPE)
 
     @JvmStatic
     val isABDevice: Boolean
@@ -58,12 +54,13 @@ object DeviceInfoUtils : SettingsLibDeviceInfoUtils() {
         get() = SystemProperties.getBoolean(PROP_ALLOW_MAJOR_UPGRADES, false)
 
     @JvmStatic
-    var isRecoveryUpdateEnabled: Boolean
-        get() = SystemProperties.getBoolean(PROP_UPDATE_RECOVERY, false)
-        set(value) = SystemProperties.set(PROP_UPDATE_RECOVERY, value.toString())
-
-    @JvmStatic
     val updaterUri: String
         get() = SystemProperties.get(PROP_UPDATER_URI, "")
-}
 
+    @JvmStatic
+    var isRecoveryUpdateEnabled: Boolean
+        get() = SystemProperties.getBoolean(PROP_UPDATE_RECOVERY, false)
+        set(value) {
+            SystemProperties.set(PROP_UPDATE_RECOVERY, value.toString())
+        }
+}
