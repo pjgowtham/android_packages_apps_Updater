@@ -92,7 +92,10 @@ dependencies {
     implementation(libs.androidx.localbroadcastmanager)
     implementation(libs.androidx.preference)
     implementation(libs.androidx.recyclerview)
+    implementation(libs.androidx.room.runtime)
     implementation(libs.material)
+
+    annotationProcessor(libs.androidx.room.compiler)
 }
 
 configure<GenerateBpPluginExtension> {

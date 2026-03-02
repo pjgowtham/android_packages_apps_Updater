@@ -18,14 +18,14 @@ package org.lineageos.updater.controller;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
-import android.database.sqlite.SQLiteDatabase;
 import android.os.PowerManager;
 import android.os.SystemClock;
 import android.util.Log;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
-import org.lineageos.updater.UpdatesDbHelper;
+import org.lineageos.updater.database.UpdaterDatabase;
+import org.lineageos.updater.repository.UpdaterDbRepository;
 import org.lineageos.updater.download.DownloadClient;
 import org.lineageos.updater.misc.DeviceInfoUtils;
 import org.lineageos.updater.misc.Utils;
@@ -57,7 +57,7 @@ public class UpdaterController {
 
     private final Context mContext;
     private final LocalBroadcastManager mBroadcastManager;
-    private final UpdatesDbHelper mUpdatesDbHelper;
+    private final UpdaterDbRepository mUpdatesRepository;
 
     private final PowerManager.WakeLock mWakeLock;
 
@@ -75,18 +75,19 @@ public class UpdaterController {
 
     private UpdaterController(Context context) {
         mBroadcastManager = LocalBroadcastManager.getInstance(context);
-        mUpdatesDbHelper = new UpdatesDbHelper(context);
+        mUpdatesRepository = UpdaterDatabase.getInstance(context).repository();
         mDownloadRoot = Utils.getDownloadPath(context);
         PowerManager powerManager = context.getSystemService(PowerManager.class);
         mWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Updater:wakelock");
         mWakeLock.setReferenceCounted(false);
         mContext = context.getApplicationContext();
 
-        Utils.cleanupDownloadsDir(context);
-
-        for (UpdateInfo update : mUpdatesDbHelper.getUpdates()) {
-            addUpdate(update, false);
-        }
+        new Thread(() -> {
+            Utils.cleanupDownloadsDir(context);
+            for (UpdateInfo update : mUpdatesRepository.getUpdates()) {
+                addUpdate(update, false);
+            }
+        }).start();
     }
 
     private static class DownloadEntry {
@@ -174,8 +175,7 @@ public class UpdaterController {
                 builder.setStatus(UpdateStatus.DOWNLOADING);
                 final UpdateInfo newUpdate = builder.build();
                 entry.mUpdate = newUpdate;
-                new Thread(() -> mUpdatesDbHelper.addUpdateWithOnConflict(newUpdate,
-                        SQLiteDatabase.CONFLICT_REPLACE)).start();
+                new Thread(() -> mUpdatesRepository.addUpdate(newUpdate)).start();
                 notifyUpdateChange(downloadId);
             }
 
@@ -258,12 +258,11 @@ public class UpdaterController {
                 UpdateInfo update = entry.mUpdate;
                 File file = update.getFile();
                 if (file.exists() && verifyPackage(file)) {
-                    //noinspection ResultOfMethodCallIgnored
                     file.setReadable(true, false);
                     entry.mUpdate = update.withStatus(UpdateStatus.VERIFIED);
-                    mUpdatesDbHelper.changeUpdateStatus(entry.mUpdate);
+                    mUpdatesRepository.changeStatus(downloadId, UpdateStatus.VERIFIED);
                 } else {
-                    mUpdatesDbHelper.removeUpdate(downloadId);
+                    mUpdatesRepository.removeUpdate(downloadId);
                     entry.mUpdate = update.toBuilder()
                             .setProgress(0)
                             .setStatus(UpdateStatus.VERIFICATION_FAILED)
@@ -483,7 +482,7 @@ public class UpdaterController {
             if (file.exists() && !file.delete()) {
                 Log.e(TAG, "Could not delete " + file.getAbsolutePath());
             }
-            mUpdatesDbHelper.removeUpdate(update.getDownloadId());
+            mUpdatesRepository.removeUpdate(update.getDownloadId());
         }).start();
     }
 

@@ -11,13 +11,14 @@ cardview = "1.0.0"
 compose-material3 = "1.4.0-alpha16"
 compose-runtime = "1.9.0-beta01"
 core = "1.17.0"
+generateBp = "+"
 kotlin = "2.2.0"
 lifecycle = "2.10.0-alpha04"
 localbroadcastmanager = "1.1.0"
 material = "1.14.0-alpha02"
 preference = "1.2.1"
 recyclerview = "1.4.0"
-generateBp = "+"
+room = "2.8.4"
 
 [libraries]
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activity-compose" }
@@ -31,6 +32,8 @@ androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifec
 androidx-localbroadcastmanager = { group = "androidx.localbroadcastmanager", name = "localbroadcastmanager", version.ref = "localbroadcastmanager" }
 androidx-preference = { group = "androidx.preference", name = "preference", version.ref = "preference" }
 androidx-recyclerview = { group = "androidx.recyclerview", name = "recyclerview", version.ref = "recyclerview" }
+androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 
 [plugins]
