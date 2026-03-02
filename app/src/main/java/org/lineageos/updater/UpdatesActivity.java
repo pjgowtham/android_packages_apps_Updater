@@ -15,15 +15,12 @@
  */
 package org.lineageos.updater;
 
-import android.app.ActionBar;
 import android.app.Activity;
-import android.app.UiModeManager;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.res.Configuration;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.icu.text.DateFormat;
@@ -32,8 +29,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -49,8 +44,6 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.SimpleItemAnimator;
 
-import com.android.settingslib.collapsingtoolbar.CollapsingToolbarBaseActivity;
-import com.android.settingslib.utils.ColorUtil;
 
 import org.lineageos.updater.controller.UpdaterController;
 import org.lineageos.updater.controller.UpdaterService;
@@ -64,7 +57,7 @@ import org.lineageos.updater.viewmodel.UpdaterViewModel;
 
 import java.util.List;
 
-public class UpdatesActivity extends CollapsingToolbarBaseActivity implements
+public class UpdatesActivity extends UpdaterBaseActivity implements
         UpdateImporter.Callbacks {
 
     private static final String TAG = "UpdatesActivity";
@@ -74,8 +67,6 @@ public class UpdatesActivity extends CollapsingToolbarBaseActivity implements
     private UpdatesListAdapter mAdapter;
 
     private UpdaterViewModel mViewModel;
-
-    private boolean mIsTV;
 
     private UpdateInfo mToBeExported = null;
     private final ActivityResultLauncher<Intent> mExportUpdate = registerForActivityResult(
@@ -90,7 +81,6 @@ public class UpdatesActivity extends CollapsingToolbarBaseActivity implements
                 }
             });
 
-    private Menu mMenu;
     private UpdateImporter mUpdateImporter;
     private AlertDialog importDialog;
 
@@ -130,9 +120,6 @@ public class UpdatesActivity extends CollapsingToolbarBaseActivity implements
 
         mUpdateImporter = new UpdateImporter(this, this);
 
-        UiModeManager uiModeManager = getSystemService(UiModeManager.class);
-        mIsTV = uiModeManager.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION;
-
         RecyclerView recyclerView = findViewById(R.id.recycler_view);
         mAdapter = new UpdatesListAdapter(this, this::exportUpdate);
         recyclerView.setAdapter(mAdapter);
@@ -167,13 +154,6 @@ public class UpdatesActivity extends CollapsingToolbarBaseActivity implements
             }
         };
 
-        ActionBar actionBar = getActionBar();
-        if (actionBar != null) {
-            actionBar.setDisplayHomeAsUpEnabled(true);
-        }
-
-        setTitle(getString(R.string.display_name));
-
         TextView headerTitle = findViewById(R.id.header_title);
         headerTitle.setText(getString(R.string.header_title_text,
                 DeviceInfoUtils.getBuildVersion()));
@@ -189,19 +169,6 @@ public class UpdatesActivity extends CollapsingToolbarBaseActivity implements
         TextView headerSecurityPatch = findViewById(R.id.header_security_patch_level);
         headerSecurityPatch.setText(getString(R.string.header_android_security_update,
                 DeviceInfoUtils.getSecurityPatch()));
-
-        if (mIsTV) {
-            findViewById(R.id.refresh).setOnClickListener(
-                    v -> mViewModel.refreshUpdates());
-            findViewById(R.id.preferences).setOnClickListener(v -> showPreferencesDialog());
-        }
-
-        if (!Utils.hasTouchscreen(this)) {
-            // Collapsing toolbar can't be operated without a touchscreen
-            if (getAppBarLayout() != null) {
-                getAppBarLayout().setExpanded(false);
-            }
-        }
 
         maybeShowWelcomeMessage();
     }
@@ -239,35 +206,6 @@ public class UpdatesActivity extends CollapsingToolbarBaseActivity implements
             unbindService(mConnection);
         }
         super.onStop();
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_toolbar, menu);
-        mMenu = menu;
-        setRefreshEnabled(!mViewModel.getUpdateCheckState().getValue().isRefreshing());
-        return super.onCreateOptionsMenu(menu);
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        int itemId = item.getItemId();
-        if (itemId == R.id.menu_refresh) {
-            mViewModel.refreshUpdates();
-            return true;
-        } else if (itemId == R.id.menu_preferences) {
-            showPreferencesDialog();
-            return true;
-        } else if (itemId == R.id.menu_show_changelog) {
-            Intent openUrl = new Intent(Intent.ACTION_VIEW,
-                    Uri.parse(Utils.getChangelogURL(this)));
-            startActivity(openUrl);
-            return true;
-        } else if (itemId == R.id.menu_local_update) {
-            mUpdateImporter.openImportPicker();
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
     }
 
     @Override
@@ -345,28 +283,6 @@ public class UpdatesActivity extends CollapsingToolbarBaseActivity implements
         }
     };
 
-    private void setRefreshEnabled(boolean enabled) {
-        float disabledAlpha = ColorUtil.getDisabledAlpha(this);
-        if (!mIsTV) {
-            if (mMenu != null) {
-                MenuItem item = mMenu.findItem(R.id.menu_refresh);
-                if (item != null) {
-                    item.setEnabled(enabled);
-                    if (item.getIcon() != null) {
-                        item.getIcon().setAlpha(enabled ? 255
-                                : (int) (255 * disabledAlpha));
-                    }
-                }
-            }
-        } else {
-            View refreshButton = findViewById(R.id.refresh);
-            if (refreshButton != null) {
-                refreshButton.setEnabled(enabled);
-                refreshButton.setAlpha(enabled ? 1f : disabledAlpha);
-            }
-        }
-    }
-
     private void updateLastCheckedString(long lastCheckMillis) {
         if (lastCheckMillis <= 0) return;
         long lastCheckSeconds = lastCheckMillis / 1000;
@@ -418,9 +334,24 @@ public class UpdatesActivity extends CollapsingToolbarBaseActivity implements
         Toast.makeText(this, stringId, duration).show();
     }
 
-    private void showPreferencesDialog() {
-        Intent intent = new Intent(this, PreferencesActivity.class);
-        startActivity(intent);
+    @Override
+    public void onRefreshClick() {
+        mViewModel.refreshUpdates();
+    }
+
+    @Override
+    public void onLocalUpdateClick() {
+        mUpdateImporter.openImportPicker();
+    }
+
+    @Override
+    public void onChangelogClick() {
+        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(Utils.getChangelogURL(this))));
+    }
+
+    @Override
+    public void onPreferencesClick() {
+        startActivity(new Intent(this, PreferencesActivity.class));
     }
 
     private void maybeShowWelcomeMessage() {
