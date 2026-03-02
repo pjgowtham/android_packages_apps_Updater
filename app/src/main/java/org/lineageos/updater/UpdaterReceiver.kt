@@ -20,6 +20,8 @@ import org.lineageos.updater.controller.UpdaterService
 import org.lineageos.updater.misc.Constants
 import org.lineageos.updater.misc.DeviceInfoUtils
 import org.lineageos.updater.misc.StringGenerator
+import org.lineageos.updater.repository.UpdaterRepository
+import org.lineageos.updater.worker.UpdateCheckWorker
 import java.text.DateFormat
 
 class UpdaterReceiver : BroadcastReceiver() {
@@ -31,6 +33,9 @@ class UpdaterReceiver : BroadcastReceiver() {
             }
 
             Intent.ACTION_BOOT_COMPLETED -> {
+                UpdateCheckWorker.schedulePeriodicCheck(context)
+                UpdateCheckWorker.scheduleOneshotCheck(context)
+
                 val pref = PreferenceManager.getDefaultSharedPreferences(context)
 
                 val downloadId = pref.getString(Constants.PREF_NEEDS_REBOOT_ID, null)

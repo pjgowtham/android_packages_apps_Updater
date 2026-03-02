@@ -48,6 +48,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.SwitchCompat;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -59,30 +60,29 @@ import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.appbar.CollapsingToolbarLayout;
 import com.google.android.material.snackbar.Snackbar;
 
-import org.json.JSONException;
 import org.lineageos.updater.controller.UpdaterController;
 import org.lineageos.updater.controller.UpdaterService;
-import org.lineageos.updater.download.DownloadClient;
 import org.lineageos.updater.misc.Constants;
 import org.lineageos.updater.misc.DeviceInfoUtils;
 import org.lineageos.updater.misc.StringGenerator;
 import org.lineageos.updater.misc.Utils;
 import org.lineageos.updater.model.UpdateInfo;
+import org.lineageos.updater.viewmodel.FetchResult;
+import org.lineageos.updater.viewmodel.UpdaterViewModel;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
-public class UpdatesActivity extends UpdatesListActivity implements UpdateImporter.Callbacks {
+public class UpdatesActivity extends UpdatesListActivity implements
+        UpdateImporter.Callbacks {
 
     private static final String TAG = "UpdatesActivity";
     private UpdaterService mUpdaterService;
     private BroadcastReceiver mBroadcastReceiver;
 
     private UpdatesListAdapter mAdapter;
-    private Menu mMenu;
+
+    private UpdaterViewModel mViewModel;
 
     private boolean mIsTV;
 
@@ -99,6 +99,7 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
                 }
             });
 
+    private Menu mMenu;
     private UpdateImporter mUpdateImporter;
     private AlertDialog importDialog;
 
@@ -106,6 +107,35 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_updates);
+
+        mViewModel = new ViewModelProvider(this).get(UpdaterViewModel.class);
+        mViewModel.getUiStateLiveData().observe(this, state -> {
+            boolean hasUpdates = !state.getUpdates().isEmpty();
+            if (hasUpdates) {
+                findViewById(R.id.no_new_updates_view).setVisibility(View.GONE);
+                findViewById(R.id.recycler_view).setVisibility(View.VISIBLE);
+            } else {
+                findViewById(R.id.no_new_updates_view).setVisibility(View.VISIBLE);
+                findViewById(R.id.recycler_view).setVisibility(View.GONE);
+            }
+            mAdapter.setData(state.getUpdateIds());
+            mAdapter.notifyDataSetChanged();
+        });
+        mViewModel.getUpdateCheckStateLiveData().observe(this, checkState -> {
+            setRefreshEnabled(!checkState.isRefreshing());
+
+            if (checkState.getFetchResult() != null) {
+                FetchResult result = checkState.getFetchResult();
+                if (result instanceof FetchResult.Success) {
+                    updateLastCheckedString(checkState.getLastCheckTimestamp());
+                    boolean hasNew = ((FetchResult.Success) result).getHasNewUpdates();
+                    showSnackbar(hasNew ? R.string.snack_updates_found : R.string.snack_no_updates_found, Snackbar.LENGTH_SHORT);
+                } else if (result instanceof FetchResult.Error) {
+                    showSnackbar(R.string.snack_updates_check_failed, Snackbar.LENGTH_LONG);
+                }
+                mViewModel.consumeFetchResult();
+            }
+        });
 
         mUpdateImporter = new UpdateImporter(this, this);
 
@@ -178,8 +208,6 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
         headerTitle.setText(getString(R.string.header_title_text,
                 DeviceInfoUtils.getBuildVersion()));
 
-        updateLastCheckedString();
-
         TextView headerBuildVersion = findViewById(R.id.header_build_version);
         headerBuildVersion.setText(
                 getString(R.string.header_android_version, Build.VERSION.RELEASE));
@@ -217,7 +245,8 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
                 appBar.setExpanded(false);
             }
         } else {
-            findViewById(R.id.refresh).setOnClickListener(v -> downloadUpdatesList(true));
+            findViewById(R.id.refresh).setOnClickListener(v ->
+                    mViewModel.refreshUpdates());
             findViewById(R.id.preferences).setOnClickListener(v -> showPreferencesDialog());
         }
 
@@ -270,7 +299,7 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
     public boolean onOptionsItemSelected(MenuItem item) {
         int itemId = item.getItemId();
         if (itemId == R.id.menu_refresh) {
-            downloadUpdatesList(true);
+            mViewModel.refreshUpdates();
             return true;
         } else if (itemId == R.id.menu_preferences) {
             showPreferencesDialog();
@@ -341,8 +370,7 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
                 .setMessage(getString(R.string.local_update_import_success, update.getVersion()))
                 .setPositiveButton(R.string.local_update_import_install, (dialog, which) -> {
                     mAdapter.addItem(update.getDownloadId());
-                    // Update UI
-                    getUpdatesList();
+                    mViewModel.refreshUpdates();
                     Utils.triggerUpdate(this, update.getDownloadId());
                 })
                 .setNegativeButton(android.R.string.cancel, (dialog, which) -> deleteUpdate.run())
@@ -356,8 +384,9 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
                 IBinder service) {
             UpdaterService.LocalBinder binder = (UpdaterService.LocalBinder) service;
             mUpdaterService = binder.getService();
-            mAdapter.setUpdaterController(mUpdaterService.getUpdaterController());
-            getUpdatesList();
+            UpdaterController controller = mUpdaterService.getUpdaterController();
+            mAdapter.setUpdaterController(controller);
+            mViewModel.refreshUpdates();
         }
 
         @Override
@@ -367,127 +396,6 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
             mAdapter.notifyDataSetChanged();
         }
     };
-
-    private void loadUpdatesList(File jsonFile, boolean manualRefresh)
-            throws IOException, JSONException {
-        Log.d(TAG, "Adding remote updates");
-        UpdaterController controller = mUpdaterService.getUpdaterController();
-        boolean newUpdates = false;
-
-        List<UpdateInfo> updates = Utils.parseJson(jsonFile, true);
-        List<String> updatesOnline = new ArrayList<>();
-        for (UpdateInfo update : updates) {
-            newUpdates |= controller.addUpdate(update);
-            updatesOnline.add(update.getDownloadId());
-        }
-        controller.setUpdatesAvailableOnline(updatesOnline, true);
-
-        if (manualRefresh) {
-            showSnackbar(
-                    newUpdates ? R.string.snack_updates_found : R.string.snack_no_updates_found,
-                    Snackbar.LENGTH_SHORT);
-        }
-
-        List<String> updateIds = new ArrayList<>();
-        List<UpdateInfo> sortedUpdates = controller.getUpdates();
-        if (sortedUpdates.isEmpty()) {
-            findViewById(R.id.no_new_updates_view).setVisibility(View.VISIBLE);
-            findViewById(R.id.recycler_view).setVisibility(View.GONE);
-        } else {
-            findViewById(R.id.no_new_updates_view).setVisibility(View.GONE);
-            findViewById(R.id.recycler_view).setVisibility(View.VISIBLE);
-            sortedUpdates.sort((u1, u2) -> Long.compare(u2.getTimestamp(), u1.getTimestamp()));
-            for (UpdateInfo update : sortedUpdates) {
-                updateIds.add(update.getDownloadId());
-            }
-            mAdapter.setData(updateIds);
-            mAdapter.notifyDataSetChanged();
-        }
-    }
-
-    private void getUpdatesList() {
-        File jsonFile = Utils.getCachedUpdateList(this);
-        if (jsonFile.exists()) {
-            try {
-                loadUpdatesList(jsonFile, false);
-                Log.d(TAG, "Cached list parsed");
-            } catch (IOException | JSONException e) {
-                Log.e(TAG, "Error while parsing json list", e);
-            }
-        } else {
-            downloadUpdatesList(false);
-        }
-    }
-
-    private void processNewJson(File json, File jsonNew, boolean manualRefresh) {
-        try {
-            loadUpdatesList(jsonNew, manualRefresh);
-            SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
-            long millis = System.currentTimeMillis();
-            preferences.edit().putLong(Constants.PREF_LAST_UPDATE_CHECK, millis).apply();
-            updateLastCheckedString();
-            if (json.exists() && Utils.isUpdateCheckEnabled(this) &&
-                    Utils.checkForNewUpdates(json, jsonNew)) {
-                UpdatesCheckReceiver.updateRepeatingUpdatesCheck(this);
-            }
-            // In case we set a one-shot check because of a previous failure
-            UpdatesCheckReceiver.cancelUpdatesCheck(this);
-            //noinspection ResultOfMethodCallIgnored
-            jsonNew.renameTo(json);
-        } catch (IOException | JSONException e) {
-            Log.e(TAG, "Could not read json", e);
-            showSnackbar(R.string.snack_updates_check_failed, Snackbar.LENGTH_LONG);
-        }
-    }
-
-    private void downloadUpdatesList(final boolean manualRefresh) {
-        final File jsonFile = Utils.getCachedUpdateList(this);
-        final File jsonFileTmp = new File(jsonFile.getAbsolutePath() + UUID.randomUUID());
-        String url = Utils.getServerURL(this);
-        Log.d(TAG, "Checking " + url);
-
-        DownloadClient.DownloadCallback callback = new DownloadClient.DownloadCallback() {
-            @Override
-            public void onFailure(final boolean cancelled) {
-                Log.e(TAG, "Could not download updates list");
-                runOnUiThread(() -> {
-                    if (!cancelled) {
-                        showSnackbar(R.string.snack_updates_check_failed, Snackbar.LENGTH_LONG);
-                    }
-                    setRefreshEnabled(true);
-                });
-            }
-
-            @Override
-            public void onResponse(DownloadClient.Headers headers) {
-            }
-
-            @Override
-            public void onSuccess() {
-                runOnUiThread(() -> {
-                    Log.d(TAG, "List downloaded");
-                    processNewJson(jsonFile, jsonFileTmp, manualRefresh);
-                    setRefreshEnabled(true);
-                });
-            }
-        };
-
-        final DownloadClient downloadClient;
-        try {
-            downloadClient = new DownloadClient.Builder()
-                    .setUrl(url)
-                    .setDestination(jsonFileTmp)
-                    .setDownloadCallback(callback)
-                    .build();
-        } catch (IOException exception) {
-            Log.e(TAG, "Could not build download client");
-            showSnackbar(R.string.snack_updates_check_failed, Snackbar.LENGTH_LONG);
-            return;
-        }
-
-        setRefreshEnabled(false);
-        downloadClient.start();
-    }
 
     private void setRefreshEnabled(boolean enabled) {
         if (!mIsTV) {
@@ -506,15 +414,13 @@ public class UpdatesActivity extends UpdatesListActivity implements UpdateImport
         }
     }
 
-    private void updateLastCheckedString() {
-        final SharedPreferences preferences =
-                PreferenceManager.getDefaultSharedPreferences(this);
-        long lastCheck = preferences.getLong(Constants.PREF_LAST_UPDATE_CHECK, -1) / 1000;
+    private void updateLastCheckedString(long lastCheckMillis) {
+        if (lastCheckMillis <= 0) return;
+        long lastCheckSeconds = lastCheckMillis / 1000;
         String lastCheckString = getString(R.string.header_last_updates_check,
-                StringGenerator.getDateLocalized(this, DateFormat.LONG, lastCheck),
-                StringGenerator.getTimeLocalized(this, lastCheck));
-        TextView headerLastCheck = findViewById(R.id.header_last_check);
-        headerLastCheck.setText(lastCheckString);
+                StringGenerator.getDateLocalized(this, DateFormat.LONG, lastCheckSeconds),
+                StringGenerator.getTimeLocalized(this, lastCheckSeconds));
+        ((TextView) findViewById(R.id.header_last_check)).setText(lastCheckString);
     }
 
     private void handleDownloadStatusChange(String downloadId) {
