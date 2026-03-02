@@ -43,10 +43,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Enumeration;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -61,10 +59,6 @@ public class Utils {
         return new File(context.getString(R.string.download_path));
     }
 
-    public static File getCachedUpdateList(Context context) {
-        return new File(context.getCacheDir(), "updates.json");
-    }
-
     private static UpdateInfo parseJsonUpdate(JSONObject object) throws JSONException {
         return new UpdateInfo.Builder()
             .setTimestamp(object.getLong("datetime"))
@@ -75,23 +69,6 @@ public class Utils {
             .setDownloadUrl(object.getString("url"))
             .setVersion(object.getString("version"))
             .build();
-    }
-
-    public static boolean isCompatible(UpdateInfo update) {
-        if (update.getVersion().compareTo(DeviceInfoUtils.getBuildVersion()) < 0) {
-            Log.d(TAG, update.getName() + " is older than current Android version");
-            return false;
-        }
-        if (!DeviceInfoUtils.isDowngradingAllowed() &&
-                update.getTimestamp() <= DeviceInfoUtils.getBuildDateTimestamp()) {
-            Log.d(TAG, update.getName() + " is older than/equal to the current build");
-            return false;
-        }
-        if (!update.getType().equalsIgnoreCase(DeviceInfoUtils.getReleaseType())) {
-            Log.d(TAG, update.getName() + " has type " + update.getType());
-            return false;
-        }
-        return true;
     }
 
     private static boolean compareVersions(String a, String b, boolean allowMajorUpgrades) {
@@ -114,14 +91,26 @@ public class Utils {
         boolean allowMajorUpgrades = DeviceInfoUtils.isMajorUpdateAllowed();
 
         return (DeviceInfoUtils.isDowngradingAllowed() ||
-                update.getTimestamp() > DeviceInfoUtils.getBuildDateTimestamp()) &&
+                update.getTimestamp() >= DeviceInfoUtils.getBuildDateTimestamp()) &&
                 compareVersions(
                         update.getVersion(),
                         DeviceInfoUtils.getBuildVersion(),
                         allowMajorUpgrades);
     }
 
-    public static List<UpdateInfo> parseJson(File file, boolean compatibleOnly)
+    /**
+     * Checks whether the given update matches the currently running build
+     * by comparing timestamps. Used to exclude the current build from
+     * server query results while still allowing it to be installed locally.
+     *
+     * @param update the update to check
+     * @return {@code true} if the update's timestamp equals the current build timestamp
+     */
+    public static boolean isCurrentBuild(UpdateInfo update) {
+        return update.getTimestamp() == DeviceInfoUtils.getBuildDateTimestamp();
+    }
+
+    public static List<UpdateInfo> parseJson(File file)
             throws IOException, JSONException {
         List<UpdateInfo> updates = new ArrayList<>();
 
@@ -139,12 +128,7 @@ public class Utils {
                 continue;
             }
             try {
-                UpdateInfo update = parseJsonUpdate(updatesList.getJSONObject(i));
-                if (!compatibleOnly || isCompatible(update)) {
-                    updates.add(update);
-                } else {
-                    Log.d(TAG, "Ignoring incompatible update " + update.getName());
-                }
+                updates.add(parseJsonUpdate(updatesList.getJSONObject(i)));
             } catch (JSONException e) {
                 Log.e(TAG, "Could not parse update object, index=" + i, e);
             }
@@ -209,31 +193,6 @@ public class Utils {
     public static boolean isNetworkMetered(Context context) {
         ConnectivityManager cm = context.getSystemService(ConnectivityManager.class);
         return cm.isActiveNetworkMetered();
-    }
-
-    /**
-     * Compares two json formatted updates list files
-     *
-     * @param oldJson old update list
-     * @param newJson new update list
-     * @return true if newJson has at least a compatible update not available in oldJson
-     */
-    public static boolean checkForNewUpdates(File oldJson, File newJson)
-            throws IOException, JSONException {
-        List<UpdateInfo> oldList = parseJson(oldJson, true);
-        List<UpdateInfo> newList = parseJson(newJson, true);
-        Set<String> oldIds = new HashSet<>();
-        for (UpdateInfo update : oldList) {
-            oldIds.add(update.getDownloadId());
-        }
-        // In case of no new updates, the old list should
-        // have all (if not more) the updates
-        for (UpdateInfo update : newList) {
-            if (!oldIds.contains(update.getDownloadId())) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /**

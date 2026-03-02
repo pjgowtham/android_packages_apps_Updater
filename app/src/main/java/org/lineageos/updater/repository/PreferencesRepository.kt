@@ -15,10 +15,10 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.conflate
-import org.lineageos.updater.UpdatesCheckReceiver
 import org.lineageos.updater.misc.Constants
 import org.lineageos.updater.misc.Constants.CheckInterval
 import org.lineageos.updater.misc.DeviceInfoUtils
+import org.lineageos.updater.worker.UpdateCheckWorker
 
 data class PreferencesData(
     val periodicCheckEnabled: Boolean,
@@ -51,16 +51,16 @@ class PreferencesRepository(private val context: Context) {
     fun setPeriodicCheckEnabled(enabled: Boolean) {
         prefs.edit { putBoolean(Constants.PREF_PERIODIC_CHECK_ENABLED, enabled) }
         if (enabled) {
-            UpdatesCheckReceiver.scheduleRepeatingUpdatesCheck(context)
+            UpdateCheckWorker.schedulePeriodicCheck(context)
         } else {
-            UpdatesCheckReceiver.cancelRepeatingUpdatesCheck(context)
-            UpdatesCheckReceiver.cancelUpdatesCheck(context)
+            UpdateCheckWorker.cancelPeriodicCheck(context)
         }
     }
 
     fun setPeriodicCheckInterval(interval: CheckInterval) {
         prefs.edit { putString(CheckInterval.PREF_KEY, interval.value) }
-        UpdatesCheckReceiver.updateRepeatingUpdatesCheck(context)
+        UpdateCheckWorker.cancelPeriodicCheck(context)
+        UpdateCheckWorker.schedulePeriodicCheck(context)
     }
 
     fun setAutoDeleteUpdates(enabled: Boolean) {
