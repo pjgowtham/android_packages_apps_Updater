@@ -37,12 +37,14 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.lifecycle.ViewModelProvider;
@@ -55,7 +57,6 @@ import androidx.recyclerview.widget.SimpleItemAnimator;
 import com.android.settingslib.utils.ColorUtil;
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.appbar.CollapsingToolbarLayout;
-import com.google.android.material.snackbar.Snackbar;
 
 import org.lineageos.updater.controller.UpdaterController;
 import org.lineageos.updater.controller.UpdaterService;
@@ -70,7 +71,7 @@ import org.lineageos.updater.viewmodel.UpdaterViewModel;
 import java.util.ArrayList;
 import java.util.List;
 
-public class UpdatesActivity extends UpdatesListActivity implements
+public class UpdatesActivity extends AppCompatActivity implements
         UpdateImporter.Callbacks {
 
     private static final String TAG = "UpdatesActivity";
@@ -126,9 +127,9 @@ public class UpdatesActivity extends UpdatesListActivity implements
                 if (result instanceof FetchResult.Success) {
                     updateLastCheckedString(checkState.getLastCheckTimestamp());
                     boolean hasNew = ((FetchResult.Success) result).getHasNewUpdates();
-                    showSnackbar(hasNew ? R.string.snack_updates_found : R.string.snack_no_updates_found, Snackbar.LENGTH_SHORT);
+                    showToast(hasNew ? R.string.snack_updates_found : R.string.snack_no_updates_found, Toast.LENGTH_SHORT);
                 } else if (result instanceof FetchResult.Error) {
-                    showSnackbar(R.string.snack_updates_check_failed, Snackbar.LENGTH_LONG);
+                    showToast(R.string.snack_updates_check_failed, Toast.LENGTH_LONG);
                 }
                 mViewModel.consumeFetchResult();
             }
@@ -140,7 +141,7 @@ public class UpdatesActivity extends UpdatesListActivity implements
         mIsTV = uiModeManager.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION;
 
         RecyclerView recyclerView = findViewById(R.id.recycler_view);
-        mAdapter = new UpdatesListAdapter(this);
+        mAdapter = new UpdatesListAdapter(this, this::exportUpdate);
         recyclerView.setAdapter(mAdapter);
         RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(layoutManager);
@@ -433,19 +434,18 @@ public class UpdatesActivity extends UpdatesListActivity implements
         UpdateInfo update = mUpdaterService.getUpdaterController().getUpdate(downloadId);
         switch (update.getStatus()) {
             case PAUSED_ERROR:
-                showSnackbar(R.string.snack_download_failed, Snackbar.LENGTH_LONG);
+                showToast(R.string.snack_download_failed, Toast.LENGTH_LONG);
                 break;
             case VERIFICATION_FAILED:
-                showSnackbar(R.string.snack_download_verification_failed, Snackbar.LENGTH_LONG);
+                showToast(R.string.snack_download_verification_failed, Toast.LENGTH_LONG);
                 break;
             case VERIFIED:
-                showSnackbar(R.string.snack_download_verified, Snackbar.LENGTH_LONG);
+                showToast(R.string.snack_download_verified, Toast.LENGTH_LONG);
                 break;
         }
     }
 
-    @Override
-    public void exportUpdate(UpdateInfo update) {
+    private void exportUpdate(UpdateInfo update) {
         mToBeExported = update;
 
         Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
@@ -464,9 +464,8 @@ public class UpdatesActivity extends UpdatesListActivity implements
         startService(intent);
     }
 
-    @Override
-    public void showSnackbar(int stringId, int duration) {
-        Snackbar.make(findViewById(R.id.main_container), stringId, duration).show();
+    private void showToast(int stringId, int duration) {
+        Toast.makeText(this, stringId, duration).show();
     }
 
     private void showPreferencesDialog() {
