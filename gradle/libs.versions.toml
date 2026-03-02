@@ -6,7 +6,6 @@
 [versions]
 activity-compose = "1.9.3"
 agp = "9.0.0"
-appcompat = "1.7.1"
 cardview = "1.0.0"
 compose-material3 = "1.4.0-alpha16"
 compose-runtime = "1.9.0-beta01"
@@ -23,7 +22,6 @@ work = "2.11.1"
 
 [libraries]
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activity-compose" }
-androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 androidx-cardview = { group = "androidx.cardview", name = "cardview", version.ref = "cardview" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "compose-material3" }
 androidx-compose-runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "compose-runtime" }
