@@ -9,9 +9,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.settingslib.spa.widget.preference.ListPreference
 import com.android.settingslib.spa.widget.preference.ListPreferenceModel
 import com.android.settingslib.spa.widget.preference.ListPreferenceOption
@@ -23,15 +23,13 @@ import org.lineageos.updater.misc.Constants.CheckInterval
 import org.lineageos.updater.misc.DeviceInfoUtils
 import org.lineageos.updater.misc.Utils
 import org.lineageos.updater.repository.PreferencesData
-import org.lineageos.updater.repository.PreferencesRepository
+import org.lineageos.updater.viewmodel.PreferencesViewModel
 
 @Composable
-internal fun PreferencesScreen() {
-    val context = LocalContext.current
-    val repository = remember { PreferencesRepository(context) }
+internal fun PreferencesScreen(viewModel: PreferencesViewModel = viewModel()) {
     val isABDevice = remember { DeviceInfoUtils.isABDevice }
     val showRecoveryUpdate = remember { Utils.isRecoveryUpdateExecPresent() }
-    val state by repository.preferencesData.collectAsStateWithLifecycle(
+    val state by viewModel.preferencesData.collectAsStateWithLifecycle(
         initialValue = PreferencesData(
             periodicCheckEnabled = true,
             periodicCheckInterval = CheckInterval.WEEKLY,
@@ -51,12 +49,12 @@ internal fun PreferencesScreen() {
                 override val title = autoUpdatesCheckTitle
                 override val summary = { autoUpdatesCheckSummary }
                 override val checked = { state.periodicCheckEnabled }
-                override val onCheckedChange = repository::setPeriodicCheckEnabled
+                override val onCheckedChange = viewModel::setPeriodicCheckEnabled
             })
 
             CheckIntervalPreference(
                 state = state,
-                repository = repository,
+                onIntervalSelected = viewModel::setPeriodicCheckInterval,
                 enabled = state.periodicCheckEnabled,
             )
         }
@@ -69,7 +67,7 @@ internal fun PreferencesScreen() {
                     override val title = autoDeleteTitle
                     override val summary = { autoDeleteSummary }
                     override val checked = { state.autoDeleteUpdates }
-                    override val onCheckedChange = repository::setAutoDeleteUpdates
+                    override val onCheckedChange = viewModel::setAutoDeleteUpdates
                 })
             }
 
@@ -79,7 +77,7 @@ internal fun PreferencesScreen() {
                 override val title = meteredTitle
                 override val summary = { meteredSummary }
                 override val checked = { state.meteredNetworkWarning }
-                override val onCheckedChange = repository::setMeteredNetworkWarning
+                override val onCheckedChange = viewModel::setMeteredNetworkWarning
             })
 
             if (isABDevice) {
@@ -89,7 +87,7 @@ internal fun PreferencesScreen() {
                     override val title = abPerfTitle
                     override val summary = { abPerfSummary }
                     override val checked = { state.abPerfMode }
-                    override val onCheckedChange = repository::setAbPerfMode
+                    override val onCheckedChange = viewModel::setAbPerfMode
                 })
 
                 val streamingTitle = stringResource(R.string.menu_ab_streaming_mode)
@@ -98,7 +96,7 @@ internal fun PreferencesScreen() {
                     override val title = streamingTitle
                     override val summary = { streamingSummary }
                     override val checked = { state.abStreamingMode }
-                    override val onCheckedChange = repository::setAbStreamingMode
+                    override val onCheckedChange = viewModel::setAbStreamingMode
                 })
             }
 
@@ -109,7 +107,7 @@ internal fun PreferencesScreen() {
                     override val title = recoveryTitle
                     override val summary = { recoverySummary }
                     override val checked = { state.updateRecovery }
-                    override val onCheckedChange = repository::setUpdateRecovery
+                    override val onCheckedChange = viewModel::setUpdateRecovery
                 })
             }
         }
@@ -120,7 +118,7 @@ internal fun PreferencesScreen() {
 @Composable
 private fun CheckIntervalPreference(
     state: PreferencesData,
-    repository: PreferencesRepository,
+    onIntervalSelected: (CheckInterval) -> Unit,
     enabled: Boolean,
 ) {
     val options = CheckInterval.entries.mapIndexed { i, interval ->
@@ -138,7 +136,7 @@ private fun CheckIntervalPreference(
         override val selectedId = selectedId
         override val enabled = { enabled }
         override val onIdSelected: (Int) -> Unit = { index ->
-            repository.setPeriodicCheckInterval(CheckInterval.entries[index])
+            onIntervalSelected(CheckInterval.entries[index])
         }
     })
 }
