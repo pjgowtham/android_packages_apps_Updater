@@ -22,9 +22,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.android.settingslib.spa.framework.common.SettingsPageProviderRepository
-import com.android.settingslib.spa.framework.common.SpaEnvironment
-import com.android.settingslib.spa.framework.common.SpaEnvironmentFactory
 import com.android.settingslib.spa.framework.compose.localNavController
 import com.android.settingslib.spa.framework.theme.SettingsTheme
 import com.android.settingslib.spa.widget.preference.Preference
@@ -55,14 +52,6 @@ abstract class UpdaterBaseActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        if (!SpaEnvironmentFactory.isReady()) {
-            SpaEnvironmentFactory.reset(object : SpaEnvironment(applicationContext) {
-                override val pageProviderRepository = lazy {
-                    SettingsPageProviderRepository(emptyList())
-                }
-                override val isSpaExpressiveEnabled = true
-            })
-        }
         setTheme(SpaR.style.Theme_SpaLib)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
