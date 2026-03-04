@@ -11,10 +11,12 @@ import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,12 +29,14 @@ import com.android.settingslib.spa.framework.compose.NavControllerWrapper
 import com.android.settingslib.spa.framework.theme.SettingsTheme
 import com.android.settingslib.spa.widget.scaffold.MoreOptionsAction
 import com.android.settingslib.spa.widget.scaffold.RegularScaffold
+import org.lineageos.updater.data.UpdateStatus
 import org.lineageos.updater.preferences.PreferencesActivity
 
 abstract class UpdaterBaseActivity : ComponentActivity() {
 
     private var legacyView: View? = null
     private val refreshEnabled = mutableStateOf(true)
+    private val viewModel: UpdatesViewModel by viewModels { UpdatesViewModel.factory(application) }
 
     protected fun setRefreshEnabled(enabled: Boolean) {
         refreshEnabled.value = enabled
@@ -55,8 +59,35 @@ abstract class UpdaterBaseActivity : ComponentActivity() {
             }
             CompositionLocalProvider(LocalNavController provides navController) {
                 SettingsTheme {
+                    val uiState by viewModel.uiState.collectAsState()
+                    val updates = uiState.updates
+                    val titleText = when {
+                        updates.isEmpty() && uiState.lastCheckedTimestamp == 0L ->
+                            stringResource(R.string.display_name)
+
+                        updates.isEmpty() -> stringResource(R.string.snack_no_updates_found)
+                        updates.any { it.status == UpdateStatus.UPDATED_NEED_REBOOT } ->
+                            stringResource(R.string.installing_update_finished)
+
+                        updates.any {
+                            it.status == UpdateStatus.INSTALLING ||
+                                    it.status == UpdateStatus.INSTALLATION_SUSPENDED
+                        } -> stringResource(R.string.installing_update)
+
+                        updates.any { it.status == UpdateStatus.VERIFYING } ->
+                            stringResource(R.string.verifying_download_notification)
+
+                        updates.any {
+                            it.status == UpdateStatus.DOWNLOADING ||
+                                    it.status == UpdateStatus.STARTING ||
+                                    it.status == UpdateStatus.PAUSED ||
+                                    it.status == UpdateStatus.PAUSED_ERROR
+                        } -> stringResource(R.string.downloading_notification)
+
+                        else -> stringResource(R.string.snack_updates_found)
+                    }
                     RegularScaffold(
-                        title = stringResource(R.string.display_name),
+                        title = titleText,
                         actions = {
                             val enabled by refreshEnabled
 
