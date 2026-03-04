@@ -9,14 +9,14 @@ import android.os.Bundle
 import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.compose.NavHost
@@ -28,14 +28,16 @@ import com.android.settingslib.spa.widget.preference.Preference
 import com.android.settingslib.spa.widget.preference.PreferenceModel
 import com.android.settingslib.spa.widget.scaffold.RegularScaffold
 import com.android.settingslib.spa.widget.ui.Category
+import org.lineageos.updater.model.UpdateStatus
+import org.lineageos.updater.viewmodel.UpdaterViewModel
 import com.android.settingslib.spa.R as SpaR
 
 private const val ROUTE_UPDATES = "updates"
 private const val ROUTE_PREFERENCES = "preferences"
 
 /**
- * Base activity providing the [RegularScaffold] shell: a top app bar with a refresh action and a
- * fixed section of menu preferences (local update, changelog, settings).
+ * Base activity providing a [RegularScaffold] with a fixed section of menu preferences
+ * (local update, changelog, settings).
  *
  * Subclasses override the open `on*Click` hooks to respond to toolbar and menu actions.
  */
@@ -45,6 +47,8 @@ abstract class UpdaterBaseActivity : ComponentActivity() {
 
     // Class-level property — remember {} is only for composable scope, not applicable here.
     private val refreshEnabled = mutableStateOf(true)
+
+    private val viewModel: UpdaterViewModel by viewModels()
 
     /** Enables or disables the refresh icon button in the top app bar. */
     protected fun setRefreshEnabled(enabled: Boolean) {
@@ -74,19 +78,35 @@ abstract class UpdaterBaseActivity : ComponentActivity() {
                         startDestination = ROUTE_UPDATES,
                     ) {
                         composable(ROUTE_UPDATES) {
+                            val uiState by viewModel.uiState.collectAsState()
+                            val updates = uiState.updates
+                            val titleText: String
+                            when {
+                                !uiState.hasLoaded -> {
+                                    titleText = stringResource(R.string.display_name)
+                                }
+
+                                updates.isEmpty() -> {
+                                    titleText = stringResource(R.string.snack_no_updates_found)
+                                }
+
+                                updates.any { it.status == UpdateStatus.UPDATED_NEED_REBOOT } -> {
+                                    titleText = stringResource(R.string.installing_update_finished)
+                                }
+
+                                updates.any {
+                                    it.status == UpdateStatus.INSTALLING ||
+                                            it.status == UpdateStatus.INSTALLATION_SUSPENDED
+                                } -> {
+                                    titleText = stringResource(R.string.installing_update)
+                                }
+
+                                else -> {
+                                    titleText = stringResource(R.string.snack_updates_found)
+                                }
+                            }
                             RegularScaffold(
-                                title = stringResource(R.string.display_name),
-                                actions = {
-                                    IconButton(
-                                        onClick = { onRefreshClick() },
-                                        enabled = refreshEnabled.value,
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(R.drawable.ic_menu_refresh),
-                                            contentDescription = stringResource(R.string.menu_refresh),
-                                        )
-                                    }
-                                },
+                                title = titleText,
                             ) {
                                 AndroidView(
                                     factory = { capturedView },

@@ -33,6 +33,7 @@ data class UpdateCheckState(
 
 data class UpdaterUiState(
     val updates: List<UpdateInfo> = emptyList(),
+    val hasLoaded: Boolean = false,
 ) {
     val updateIds: List<String> = updates.map { it.downloadId }
 }
@@ -69,6 +70,16 @@ class UpdaterViewModel(application: Application) : AndroidViewModel(application)
         _updateCheckState.update { it.copy(fetchResult = null) }
     }
 
+    /** Re-reads the controller's current update list and pushes it into [uiState]. */
+    fun refreshUiState() {
+        _uiState.update {
+            it.copy(
+                updates = controller.updates.sortedByDescending { u -> u.timestamp },
+                hasLoaded = true,
+            )
+        }
+    }
+
     private fun applyResult(result: UpdateResult) {
         val onlineIds = result.updates.map { it.downloadId }
         result.updates.forEach { controller.addUpdate(it) }
@@ -77,6 +88,7 @@ class UpdaterViewModel(application: Application) : AndroidViewModel(application)
         _uiState.update { it ->
             it.copy(
                 updates = controller.updates.sortedByDescending { it.timestamp },
+                hasLoaded = true,
             )
         }
 

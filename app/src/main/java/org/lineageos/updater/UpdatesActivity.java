@@ -136,6 +136,7 @@ public class UpdatesActivity extends UpdaterBaseActivity implements
                     String downloadId = intent.getStringExtra(UpdaterController.EXTRA_DOWNLOAD_ID);
                     handleDownloadStatusChange(downloadId);
                     mAdapter.notifyItemChanged(downloadId);
+                    mViewModel.refreshUiState();
                 } else if (UpdaterController.ACTION_DOWNLOAD_PROGRESS.equals(intent.getAction()) ||
                         UpdaterController.ACTION_INSTALL_PROGRESS.equals(intent.getAction())) {
                     String downloadId = intent.getStringExtra(UpdaterController.EXTRA_DOWNLOAD_ID);
@@ -149,6 +150,7 @@ public class UpdatesActivity extends UpdaterBaseActivity implements
                         findViewById(R.id.no_new_updates_view).setVisibility(View.VISIBLE);
                         findViewById(R.id.recycler_view).setVisibility(View.GONE);
                     }
+                    mViewModel.refreshUiState();
                 }
             }
         };
