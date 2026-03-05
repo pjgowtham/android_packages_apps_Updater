@@ -47,7 +47,6 @@ import org.lineageos.updater.misc.Constants;
 import org.lineageos.updater.misc.StringGenerator;
 import org.lineageos.updater.misc.Utils;
 import org.lineageos.updater.model.UpdateInfo;
-import org.lineageos.updater.viewmodel.FetchResult;
 import org.lineageos.updater.viewmodel.UpdaterViewModel;
 
 import java.util.List;
@@ -99,13 +98,6 @@ public class UpdatesActivity extends UpdaterBaseActivity implements
         });
         mViewModel.getUpdateCheckStateLiveData().observe(this, checkState -> {
             if (checkState.getFetchResult() != null) {
-                FetchResult result = checkState.getFetchResult();
-                if (result instanceof FetchResult.Success) {
-                    boolean hasNew = ((FetchResult.Success) result).getHasNewUpdates();
-                    showToast(hasNew ? R.string.snack_updates_found : R.string.snack_no_updates_found, Toast.LENGTH_SHORT);
-                } else if (result instanceof FetchResult.Error) {
-                    showToast(R.string.snack_updates_check_failed, Toast.LENGTH_LONG);
-                }
                 mViewModel.consumeFetchResult();
             }
         });
