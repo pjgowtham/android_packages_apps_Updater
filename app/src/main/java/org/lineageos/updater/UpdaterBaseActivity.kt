@@ -22,7 +22,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.android.settingslib.spa.R as SpaR
 import com.android.settingslib.spa.framework.common.SettingsPageProviderRepository
 import com.android.settingslib.spa.framework.common.SpaEnvironment
 import com.android.settingslib.spa.framework.common.SpaEnvironmentFactory
@@ -32,6 +31,7 @@ import com.android.settingslib.spa.widget.preference.Preference
 import com.android.settingslib.spa.widget.preference.PreferenceModel
 import com.android.settingslib.spa.widget.scaffold.RegularScaffold
 import com.android.settingslib.spa.widget.ui.Category
+import com.android.settingslib.spa.R as SpaR
 
 private const val ROUTE_UPDATES = "updates"
 private const val ROUTE_PREFERENCES = "preferences"
@@ -104,19 +104,28 @@ abstract class UpdaterBaseActivity : ComponentActivity() {
                                     modifier = Modifier.fillMaxWidth(),
                                 )
                                 Category {
+                                    val localUpdateSummary =
+                                        stringResource(R.string.local_update_import_summary)
+                                    val changelogSummary =
+                                        stringResource(R.string.menu_show_changelog_summary)
+                                    val preferencesSummary =
+                                        stringResource(R.string.preferences_summary)
                                     Preference(object : PreferenceModel {
                                         override val title =
                                             stringResource(R.string.local_update_import)
+                                        override val summary = { localUpdateSummary }
                                         override val onClick = { onLocalUpdateClick() }
                                     })
                                     Preference(object : PreferenceModel {
                                         override val title =
                                             stringResource(R.string.menu_show_changelog)
+                                        override val summary = { changelogSummary }
                                         override val onClick = { onChangelogClick() }
                                     })
                                     Preference(object : PreferenceModel {
                                         override val title =
                                             stringResource(R.string.menu_preferences)
+                                        override val summary = { preferencesSummary }
                                         override val onClick =
                                             { navController.navigate(ROUTE_PREFERENCES) }
                                     })
