@@ -27,7 +27,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
-import android.view.View;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -48,8 +47,6 @@ import org.lineageos.updater.misc.StringGenerator;
 import org.lineageos.updater.misc.Utils;
 import org.lineageos.updater.model.UpdateInfo;
 import org.lineageos.updater.viewmodel.UpdaterViewModel;
-
-import java.util.List;
 
 public class UpdatesActivity extends UpdaterBaseActivity implements
         UpdateImporter.Callbacks {
@@ -85,14 +82,6 @@ public class UpdatesActivity extends UpdaterBaseActivity implements
 
         mViewModel = new ViewModelProvider(this).get(UpdaterViewModel.class);
         mViewModel.getUiStateLiveData().observe(this, state -> {
-            boolean hasUpdates = !state.getUpdates().isEmpty();
-            if (hasUpdates) {
-                findViewById(R.id.no_new_updates_view).setVisibility(View.GONE);
-                findViewById(R.id.recycler_view).setVisibility(View.VISIBLE);
-            } else {
-                findViewById(R.id.no_new_updates_view).setVisibility(View.VISIBLE);
-                findViewById(R.id.recycler_view).setVisibility(View.GONE);
-            }
             mAdapter.setData(state.getUpdateIds());
             mAdapter.notifyDataSetChanged();
         });
@@ -129,12 +118,6 @@ public class UpdatesActivity extends UpdaterBaseActivity implements
                 } else if (UpdaterController.ACTION_UPDATE_REMOVED.equals(intent.getAction())) {
                     String downloadId = intent.getStringExtra(UpdaterController.EXTRA_DOWNLOAD_ID);
                     mAdapter.removeItem(downloadId);
-                    List<UpdateInfo> sortedUpdates =
-                            mUpdaterService.getUpdaterController().getUpdates();
-                    if (sortedUpdates.isEmpty()) {
-                        findViewById(R.id.no_new_updates_view).setVisibility(View.VISIBLE);
-                        findViewById(R.id.recycler_view).setVisibility(View.GONE);
-                    }
                     mViewModel.refreshUiState();
                 }
             }
