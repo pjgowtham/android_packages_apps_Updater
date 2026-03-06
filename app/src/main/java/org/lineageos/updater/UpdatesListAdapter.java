@@ -17,7 +17,6 @@ package org.lineageos.updater;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.os.BatteryManager;
@@ -52,18 +51,16 @@ import org.lineageos.updater.controller.UpdaterService;
 import org.lineageos.updater.misc.Constants;
 import org.lineageos.updater.misc.StringGenerator;
 import org.lineageos.updater.misc.Utils;
+import org.lineageos.updater.misc.UtilsKt;
 import org.lineageos.updater.model.UpdateInfo;
 import org.lineageos.updater.model.UpdateStatus;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.text.DateFormat;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
-import java.util.stream.Stream;
 
 public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.ViewHolder> {
 
@@ -526,7 +523,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
     }
 
     private AlertDialog.Builder getInstallDialog(final String downloadId) {
-        if (!isBatteryLevelOk()) {
+        if (!UtilsKt.isBatteryLevelOk(mActivity)) {
             Resources resources = mActivity.getResources();
             String message = resources.getString(R.string.dialog_battery_low_message_pct,
                     resources.getInteger(R.integer.battery_ok_percentage_discharging),
@@ -536,7 +533,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
                     .setMessage(message)
                     .setPositiveButton(android.R.string.ok, null);
         }
-        if (isScratchMounted()) {
+        if (UtilsKt.isScratchMounted()) {
             return new AlertDialog.Builder(mActivity)
                     .setTitle(R.string.dialog_scratch_mounted_title)
                     .setMessage(R.string.dialog_scratch_mounted_message)
@@ -665,29 +662,6 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
         TextView textView = infoDialog.findViewById(android.R.id.message);
         if (textView != null) {
             textView.setMovementMethod(LinkMovementMethod.getInstance());
-        }
-    }
-
-    private boolean isBatteryLevelOk() {
-        Intent intent = mActivity.registerReceiver(null,
-                new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
-        if (intent == null || !intent.getBooleanExtra(BatteryManager.EXTRA_PRESENT, false)) {
-            return true;
-        }
-        int percent = Math.round(100.f * intent.getIntExtra(BatteryManager.EXTRA_LEVEL, 100) /
-                intent.getIntExtra(BatteryManager.EXTRA_SCALE, 100));
-        int plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0);
-        int required = (plugged & BATTERY_PLUGGED_ANY) != 0 ?
-                mActivity.getResources().getInteger(R.integer.battery_ok_percentage_charging) :
-                mActivity.getResources().getInteger(R.integer.battery_ok_percentage_discharging);
-        return percent >= required;
-    }
-
-    private static boolean isScratchMounted() {
-        try (Stream<String> lines = Files.lines(Path.of("/proc/mounts"))) {
-            return lines.anyMatch(x -> x.split(" ")[1].equals("/mnt/scratch"));
-        } catch (IOException e) {
-            return false;
         }
     }
 }
