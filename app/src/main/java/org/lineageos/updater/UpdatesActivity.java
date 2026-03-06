@@ -22,7 +22,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
-import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -35,15 +34,12 @@ import androidx.annotation.Nullable;
 import android.app.AlertDialog;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.SimpleItemAnimator;
 
 import org.lineageos.updater.controller.UpdaterController;
 import org.lineageos.updater.controller.UpdaterService;
-import org.lineageos.updater.misc.Constants;
-import org.lineageos.updater.misc.StringGenerator;
 import org.lineageos.updater.misc.Utils;
 import org.lineageos.updater.model.UpdateInfo;
 import org.lineageos.updater.viewmodel.UpdaterViewModel;
@@ -122,8 +118,6 @@ public class UpdatesActivity extends UpdaterBaseActivity implements
                 }
             }
         };
-
-        maybeShowWelcomeMessage();
     }
 
     @Override
@@ -281,20 +275,5 @@ public class UpdatesActivity extends UpdaterBaseActivity implements
     @Override
     public void onLocalUpdateClick() {
         mUpdateImporter.openImportPicker();
-    }
-
-    private void maybeShowWelcomeMessage() {
-        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
-        boolean alreadySeen = preferences.getBoolean(Constants.PREF_HAS_SEEN_WELCOME_MESSAGE, false);
-        if (alreadySeen) {
-            return;
-        }
-        new AlertDialog.Builder(this)
-                .setTitle(R.string.welcome_title)
-                .setMessage(R.string.welcome_message)
-                .setPositiveButton(R.string.info_dialog_ok, (dialog, which) -> preferences.edit()
-                        .putBoolean(Constants.PREF_HAS_SEEN_WELCOME_MESSAGE, true)
-                        .apply())
-                .show();
     }
 }
