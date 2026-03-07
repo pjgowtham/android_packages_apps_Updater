@@ -8,7 +8,10 @@ android_app {
     name: "Updater",
 
     // Include SettingsLib and its dependencies
-    defaults: ["SettingsLibDefaults"],
+    defaults: [
+        "SettingsLibDefaults",
+        "SpaPrivilegedLib-defaults",
+    ],
 
     srcs: [
         "src/main/java/**/*.java",
