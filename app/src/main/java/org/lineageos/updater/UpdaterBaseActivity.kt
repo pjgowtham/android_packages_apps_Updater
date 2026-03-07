@@ -10,6 +10,7 @@ import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
@@ -36,8 +37,8 @@ private const val ROUTE_UPDATES = "updates"
 private const val ROUTE_PREFERENCES = "preferences"
 
 /**
- * Base activity providing a [RegularScaffold] with a fixed section of menu preferences
- * (local update, changelog, settings).
+ * Base activity providing a [RegularScaffold] with an [UpdaterBanner] header and a fixed
+ * section of menu preferences (local update, settings).
  *
  * Subclasses override the open `on*Click` hooks to respond to toolbar and menu actions.
  */
@@ -108,6 +109,7 @@ abstract class UpdaterBaseActivity : ComponentActivity() {
                             RegularScaffold(
                                 title = titleText,
                             ) {
+                                UpdaterBanner()
                                 AndroidView(
                                     factory = { capturedView },
                                     modifier = Modifier.fillMaxWidth(),
@@ -115,8 +117,6 @@ abstract class UpdaterBaseActivity : ComponentActivity() {
                                 Category {
                                     val localUpdateSummary =
                                         stringResource(R.string.local_update_import_summary)
-                                    val changelogSummary =
-                                        stringResource(R.string.menu_show_changelog_summary)
                                     val preferencesSummary =
                                         stringResource(R.string.preferences_summary)
                                     Preference(object : PreferenceModel {
@@ -124,12 +124,6 @@ abstract class UpdaterBaseActivity : ComponentActivity() {
                                             stringResource(R.string.local_update_import)
                                         override val summary = { localUpdateSummary }
                                         override val onClick = { onLocalUpdateClick() }
-                                    })
-                                    Preference(object : PreferenceModel {
-                                        override val title =
-                                            stringResource(R.string.menu_show_changelog)
-                                        override val summary = { changelogSummary }
-                                        override val onClick = { onChangelogClick() }
                                     })
                                     Preference(object : PreferenceModel {
                                         override val title =
@@ -161,4 +155,18 @@ abstract class UpdaterBaseActivity : ComponentActivity() {
     open fun onRefreshClick() {}
     open fun onLocalUpdateClick() {}
     open fun onChangelogClick() {}
+
+
+    @Composable
+    private fun RowScope.updaterActions() {
+        IconButton(
+            onClick = { onRefreshClick() },
+            enabled = refreshEnabled.value,
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_menu_refresh),
+                contentDescription = stringResource(R.string.menu_refresh),
+            )
+        }
+    }
 }

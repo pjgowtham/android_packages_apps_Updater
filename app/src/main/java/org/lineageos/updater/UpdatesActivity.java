@@ -25,7 +25,6 @@ import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.icu.text.DateFormat;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
@@ -47,7 +46,6 @@ import androidx.recyclerview.widget.SimpleItemAnimator;
 import org.lineageos.updater.controller.UpdaterController;
 import org.lineageos.updater.controller.UpdaterService;
 import org.lineageos.updater.misc.Constants;
-import org.lineageos.updater.misc.DeviceInfoUtils;
 import org.lineageos.updater.misc.StringGenerator;
 import org.lineageos.updater.misc.Utils;
 import org.lineageos.updater.model.UpdateInfo;
@@ -154,22 +152,6 @@ public class UpdatesActivity extends UpdaterBaseActivity implements
                 }
             }
         };
-
-        TextView headerTitle = findViewById(R.id.header_title);
-        headerTitle.setText(getString(R.string.header_title_text,
-                DeviceInfoUtils.getBuildVersion()));
-
-        TextView headerBuildVersion = findViewById(R.id.header_build_version);
-        headerBuildVersion.setText(
-                getString(R.string.header_android_version, Build.VERSION.RELEASE));
-
-        TextView headerBuildDate = findViewById(R.id.header_build_date);
-        headerBuildDate.setText(StringGenerator.getDateLocalizedUTC(this,
-                DateFormat.LONG, DeviceInfoUtils.getBuildDateTimestamp()));
-
-        TextView headerSecurityPatch = findViewById(R.id.header_security_patch_level);
-        headerSecurityPatch.setText(getString(R.string.header_android_security_update,
-                DeviceInfoUtils.getSecurityPatch()));
 
         maybeShowWelcomeMessage();
     }
@@ -343,11 +325,6 @@ public class UpdatesActivity extends UpdaterBaseActivity implements
     @Override
     public void onLocalUpdateClick() {
         mUpdateImporter.openImportPicker();
-    }
-
-    @Override
-    public void onChangelogClick() {
-        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(Utils.getChangelogURL(this))));
     }
 
     private void maybeShowWelcomeMessage() {
