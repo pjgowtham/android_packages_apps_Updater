@@ -23,13 +23,11 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
-import android.icu.text.DateFormat;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
 import android.view.View;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -100,12 +98,9 @@ public class UpdatesActivity extends UpdaterBaseActivity implements
             mAdapter.notifyDataSetChanged();
         });
         mViewModel.getUpdateCheckStateLiveData().observe(this, checkState -> {
-            setRefreshEnabled(!checkState.isRefreshing());
-
             if (checkState.getFetchResult() != null) {
                 FetchResult result = checkState.getFetchResult();
                 if (result instanceof FetchResult.Success) {
-                    updateLastCheckedString(checkState.getLastCheckTimestamp());
                     boolean hasNew = ((FetchResult.Success) result).getHasNewUpdates();
                     showToast(hasNew ? R.string.snack_updates_found : R.string.snack_no_updates_found, Toast.LENGTH_SHORT);
                 } else if (result instanceof FetchResult.Error) {
@@ -266,15 +261,6 @@ public class UpdatesActivity extends UpdaterBaseActivity implements
         }
     };
 
-    private void updateLastCheckedString(long lastCheckMillis) {
-        if (lastCheckMillis <= 0) return;
-        long lastCheckSeconds = lastCheckMillis / 1000;
-        String lastCheckString = getString(R.string.header_last_updates_check,
-                StringGenerator.getDateLocalized(this, DateFormat.LONG, lastCheckSeconds),
-                StringGenerator.getTimeLocalized(this, lastCheckSeconds));
-        ((TextView) findViewById(R.id.header_last_check)).setText(lastCheckString);
-    }
-
     private void handleDownloadStatusChange(String downloadId) {
         if (UpdateInfo.LOCAL_ID.equals(downloadId)) {
             return;
@@ -315,11 +301,6 @@ public class UpdatesActivity extends UpdaterBaseActivity implements
 
     private void showToast(int stringId, int duration) {
         Toast.makeText(this, stringId, duration).show();
-    }
-
-    @Override
-    public void onRefreshClick() {
-        mViewModel.refreshUpdates();
     }
 
     @Override

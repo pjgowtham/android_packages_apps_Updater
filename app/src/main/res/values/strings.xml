@@ -205,6 +205,10 @@
     <string name="local_update_import_install">Install</string>
     <string name="local_update_name">Local update</string>
 
+    <!-- Check section -->
+    <string name="check_for_updates">Check for updates</string>
+    <string name="last_checked_at">Last checked: <xliff:g id="time" example="5:30 PM">%1$s</xliff:g></string>
+
     <string name="welcome_title">Welcome</string>
     <string name="welcome_message">Please note that when multiple updates are available, there is no need to go update-by-update, you can always install the latest one directly, and then safely delete old updates to free up storage space.</string>
 </resources>

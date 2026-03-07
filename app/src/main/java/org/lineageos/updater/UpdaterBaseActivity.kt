@@ -10,15 +10,20 @@ import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -46,15 +51,7 @@ abstract class UpdaterBaseActivity : ComponentActivity() {
 
     private var legacyView: View? = null
 
-    // Class-level property — remember {} is only for composable scope, not applicable here.
-    private val refreshEnabled = mutableStateOf(true)
-
     private val viewModel: UpdaterViewModel by viewModels()
-
-    /** Enables or disables the refresh icon button in the top app bar. */
-    protected fun setRefreshEnabled(enabled: Boolean) {
-        refreshEnabled.value = enabled
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(SpaR.style.Theme_SpaLib)
@@ -80,6 +77,7 @@ abstract class UpdaterBaseActivity : ComponentActivity() {
                     ) {
                         composable(ROUTE_UPDATES) {
                             val uiState by viewModel.uiState.collectAsState()
+                            val checkState by viewModel.updateCheckState.collectAsState()
                             val updates = uiState.updates
                             val titleText: String
                             when {
@@ -108,8 +106,18 @@ abstract class UpdaterBaseActivity : ComponentActivity() {
                             }
                             RegularScaffold(
                                 title = titleText,
+                                actions = {
+                                    updaterActions(
+                                        isRefreshing = checkState.isRefreshing,
+                                    )
+                                },
                             ) {
                                 UpdaterBanner()
+                                UpdaterCheck(
+                                    isRefreshing = checkState.isRefreshing,
+                                    lastCheckTimestamp = checkState.lastCheckTimestamp,
+                                    onCheckClick = { viewModel.refreshUpdates() },
+                                )
                                 AndroidView(
                                     factory = { capturedView },
                                     modifier = Modifier.fillMaxWidth(),
@@ -152,21 +160,21 @@ abstract class UpdaterBaseActivity : ComponentActivity() {
     override fun <T : View> findViewById(id: Int): T? =
         super.findViewById(id) ?: legacyView?.findViewById(id)
 
-    open fun onRefreshClick() {}
     open fun onLocalUpdateClick() {}
     open fun onChangelogClick() {}
 
 
     @Composable
-    private fun RowScope.updaterActions() {
-        IconButton(
-            onClick = { onRefreshClick() },
-            enabled = refreshEnabled.value,
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_menu_refresh),
-                contentDescription = stringResource(R.string.menu_refresh),
-            )
+    private fun RowScope.updaterActions(
+        isRefreshing: Boolean,
+    ) {
+        Box(modifier = Modifier.size(24.dp)) {
+            if (isRefreshing) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 2.dp,
+                )
+            }
         }
     }
 }
