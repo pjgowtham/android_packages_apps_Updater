@@ -25,6 +25,12 @@ android {
         targetSdk = 33
         versionCode = 1
         versionName = "1.0"
+
+        javaCompileOptions {
+            annotationProcessorOptions {
+                arguments["room.schemaLocation"] = "$projectDir/schemas"
+            }
+        }
     }
 
     buildTypes {
@@ -95,7 +101,10 @@ dependencies {
     implementation(libs.androidx.localbroadcastmanager)
     implementation(libs.androidx.preference)
     implementation(libs.androidx.recyclerview)
+    implementation(libs.androidx.room.runtime)
     implementation(libs.material)
+
+    annotationProcessor(libs.androidx.room.compiler)
 }
 
 configure<GenerateBpPluginExtension> {
