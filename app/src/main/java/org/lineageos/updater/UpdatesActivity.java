@@ -34,6 +34,7 @@ import androidx.annotation.Nullable;
 import android.app.AlertDialog;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.SimpleItemAnimator;
@@ -90,7 +91,7 @@ public class UpdatesActivity extends UpdaterBaseActivity implements
         mUpdateImporter = new UpdateImporter(this, this);
 
         RecyclerView recyclerView = findViewById(R.id.recycler_view);
-        mAdapter = new UpdatesListAdapter(this, this::exportUpdate);
+        mAdapter = new UpdatesListAdapter(this, this, PreferenceManager.getDefaultSharedPreferences(this), this::exportUpdate);
         recyclerView.setAdapter(mAdapter);
         RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(layoutManager);

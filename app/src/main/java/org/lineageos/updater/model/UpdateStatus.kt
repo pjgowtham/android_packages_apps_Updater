@@ -54,8 +54,8 @@ enum class UpdateStatus(val persistentStatus: Int) {
     INSTALLATION_CANCELLED(0),
     INSTALLATION_SUSPENDED(2);
 
-    /** True for statuses where an operation is actively in progress. */
-    val isInProgress: Boolean
+    /** True for statuses that map to the active list item layout (progress bar visible). */
+    val isActiveLayout: Boolean
         get() = when (this) {
             DOWNLOADING,
             PAUSED,
@@ -68,7 +68,6 @@ enum class UpdateStatus(val persistentStatus: Int) {
         }
 
     companion object {
-        @JvmStatic
         fun fromPersistentStatus(status: Int) = when (status) {
             1 -> PAUSED
             2 -> VERIFIED
