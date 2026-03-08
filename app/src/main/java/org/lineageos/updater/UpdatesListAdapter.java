@@ -26,7 +26,6 @@ import android.text.format.Formatter;
 import android.text.method.LinkMovementMethod;
 import android.text.util.Linkify;
 import android.util.Log;
-import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -45,6 +44,8 @@ import androidx.appcompat.view.menu.MenuPopupHelper;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.android.settingslib.spa.framework.theme.SettingsOpacity;
 
 import com.google.android.material.snackbar.Snackbar;
 
@@ -72,8 +73,6 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
     private static final int BATTERY_PLUGGED_ANY = BatteryManager.BATTERY_PLUGGED_AC
             | BatteryManager.BATTERY_PLUGGED_USB
             | BatteryManager.BATTERY_PLUGGED_WIRELESS;
-
-    private final float mAlphaDisabledValue;
 
     private List<String> mDownloadIds;
     private String mSelectedDownload;
@@ -124,10 +123,6 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
 
     public UpdatesListAdapter(UpdatesListActivity activity) {
         mActivity = activity;
-
-        TypedValue tv = new TypedValue();
-        mActivity.getTheme().resolveAttribute(android.R.attr.disabledAlpha, tv, true);
-        mAlphaDisabledValue = tv.getFloat();
     }
 
     @NonNull
@@ -418,7 +413,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
             default:
                 clickListener = null;
         }
-        button.setAlpha(enabled ? 1.f : mAlphaDisabledValue);
+        button.setAlpha(enabled ? 1.f : SettingsOpacity.Disabled);
 
         // Disable action mode when a button is clicked
         button.setOnClickListener(v -> {
