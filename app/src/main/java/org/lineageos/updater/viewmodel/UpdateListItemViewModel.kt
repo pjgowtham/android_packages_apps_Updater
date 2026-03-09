@@ -12,25 +12,22 @@ import android.content.SharedPreferences
 import android.os.PowerManager
 import android.text.format.Formatter
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.lineageos.updater.R
 import org.lineageos.updater.controller.UpdaterController
 import org.lineageos.updater.controller.UpdaterService
+import org.lineageos.updater.controller.updaterControllerEvents
 import org.lineageos.updater.misc.Constants
 import org.lineageos.updater.misc.StringGenerator
 import org.lineageos.updater.misc.Utils
@@ -48,6 +45,7 @@ import org.lineageos.updater.ui.UpdateListItemUiEvent.ShowInstallConfirmDialog
 import org.lineageos.updater.ui.UpdateListItemUiEvent.ShowMeteredNetworkWarning
 import org.lineageos.updater.ui.UpdateListItemUiEvent.ShowNotInstallableToast
 import org.lineageos.updater.ui.UpdateListItemUiEvent.ShowScratchMountedDialog
+import org.lineageos.updater.ui.UpdateListItemUiEvent.ShowStatusToast
 import org.lineageos.updater.ui.UpdateListItemUiEvent.ShowSwitchDownloadDialog
 import org.lineageos.updater.ui.UpdateListItemUiState
 import org.lineageos.updater.ui.UpdateListItemUiState.Active
@@ -76,45 +74,65 @@ class UpdateListItemViewModel(
 
     private val controller: UpdaterController? get() = _controller.value
 
-    private val _selectedDownloadId = MutableStateFlow<String?>(null)
-    val selectedDownloadId: StateFlow<String?> = _selectedDownloadId.asStateFlow()
-
-    fun selectDownload(downloadId: String) { _selectedDownloadId.value = downloadId }
-    fun clearSelection() { _selectedDownloadId.value = null }
+    // Incremented on every controller broadcast to trigger itemStates recomputation.
+    private val _controllerTick = MutableStateFlow(0)
 
     private val _uiEvents = MutableSharedFlow<UpdateListItemUiEvent>(replay = 1)
     val uiEvents: SharedFlow<UpdateListItemUiEvent> = _uiEvents.asSharedFlow()
 
-    private var eventsJob: Job? = null
+    /**
+     * Map of downloadId → [UpdateListItemUiState], rebuilt reactively whenever the
+     * controller reports any state change. The UI collects this instead of calling
+     * [buildUiState] synchronously during composition.
+     */
+    val itemStates: StateFlow<Map<String, UpdateListItemUiState>> = combine(
+        _controller,
+        _controllerTick,
+    ) { controller, _ ->
+        controller?.updates?.associate { update ->
+            update.downloadId to buildUiState(update.downloadId)
+        } ?: emptyMap()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), emptyMap())
 
-    @Deprecated("Collect uiEvents directly from Compose once the adapter is removed.")
-    fun observeEvents(owner: LifecycleOwner, observer: Observer<UpdateListItemUiEvent>) {
-        eventsJob?.cancel()
-        eventsJob = owner.lifecycleScope.launch {
-            owner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                uiEvents.collect { observer.onChanged(it) }
+    init {
+        // Self-subscribe to controller broadcasts. This replaces the Activity-level
+        // BroadcastReceiver that previously forwarded events via triggerRefresh().
+        viewModelScope.launch {
+            context.updaterControllerEvents().collect { event ->
+                if (event.action == UpdaterController.ACTION_UPDATE_STATUS) {
+                    event.downloadId?.let { checkAndEmitStatusToast(it) }
+                }
+                _controllerTick.value++
             }
         }
     }
 
-    @Deprecated("Collect uiEvents directly from Compose once the adapter is removed.")
-    fun removeEventObserver() {
-        eventsJob?.cancel()
-        eventsJob = null
+    private fun checkAndEmitStatusToast(downloadId: String) {
+        if (UpdateInfo.LOCAL_ID == downloadId) return
+        val c = controller ?: return
+        val update = c.getUpdate(downloadId) ?: return
+        val messageRes = when (update.status) {
+            UpdateStatus.PAUSED_ERROR -> R.string.snack_download_failed
+            UpdateStatus.VERIFICATION_FAILED -> R.string.snack_download_verification_failed
+            UpdateStatus.VERIFIED -> R.string.snack_download_verified
+            else -> return
+        }
+        dispatch(ShowStatusToast(messageRes))
     }
 
-    override fun onCleared() {
-        super.onCleared()
-        eventsJob?.cancel()
-    }
-
-    fun buildUiState(downloadId: String): UpdateListItemUiState {
+    private fun buildUiState(downloadId: String): UpdateListItemUiState {
         val c = controller ?: return UpdateListItemUiState.LOADING
         val update = c.getUpdate(downloadId) ?: return UpdateListItemUiState.LOADING
 
-        val buildDate    = StringGenerator.getDateLocalizedUTC(context, DateFormat.LONG, update.timestamp)
+        val pattern = android.text.format.DateFormat.getBestDateTimePattern(
+            java.util.Locale.getDefault(),
+            "MMMd"
+        )
+        val sdf = java.text.SimpleDateFormat(pattern, java.util.Locale.getDefault())
+        sdf.timeZone = java.util.TimeZone.getTimeZone("UTC")
+        val buildDate = sdf.format(java.util.Date(update.timestamp * 1000))
+
         val buildVersion = context.getString(R.string.list_build_version, update.version)
-        val isSelected   = downloadId == _selectedDownloadId.value
         val isVerifying  = c.isVerifyingUpdate(downloadId)
         val isABUpdate   = c.isInstallingABUpdate()
         val isInstalling = c.isInstallingUpdate(downloadId)
@@ -127,7 +145,6 @@ class UpdateListItemViewModel(
                 controller   = c,
                 buildDate    = buildDate,
                 buildVersion = buildVersion,
-                isSelected   = isSelected,
                 isVerifying  = isVerifying,
                 isABUpdate   = isABUpdate,
                 isInstalling = isInstalling,
@@ -139,7 +156,6 @@ class UpdateListItemViewModel(
                 controller   = c,
                 buildDate    = buildDate,
                 buildVersion = buildVersion,
-                isSelected   = isSelected,
             )
         }
     }
@@ -150,7 +166,6 @@ class UpdateListItemViewModel(
         controller: UpdaterController,
         buildDate: String,
         buildVersion: String,
-        isSelected: Boolean,
         isVerifying: Boolean,
         isABUpdate: Boolean,
         isInstalling: Boolean,
@@ -208,11 +223,7 @@ class UpdateListItemViewModel(
                 enabled       = Utils.isNetworkAvailable(context),
                 indeterminate = false,
                 value         = update.progress,
-                text          = StringWrapper.Resource(
-                    R.string.list_download_progress_newer,
-                    downloadedBytes,
-                    totalBytes,
-                ),
+                text          = StringWrapper.Resource(R.string.download_paused_notification),
                 pct           = update.progress.toPct(),
             )
         }
@@ -220,7 +231,6 @@ class UpdateListItemViewModel(
         return Active(
             buildDate               = buildDate,
             buildVersion            = buildVersion,
-            isSelected              = isSelected,
             menuState               = buildMenuState(update),
             primaryAction           = action,
             isPrimaryActionEnabled  = enabled,
@@ -240,7 +250,6 @@ class UpdateListItemViewModel(
         controller: UpdaterController,
         buildDate: String,
         buildVersion: String,
-        isSelected: Boolean,
     ): Inactive {
         val isStreamingMode = preferences.getBoolean(Constants.PREF_AB_STREAMING_MODE, false)
 
@@ -260,7 +269,6 @@ class UpdateListItemViewModel(
         return Inactive(
             buildDate              = buildDate,
             buildVersion           = buildVersion,
-            isSelected             = isSelected,
             menuState              = buildMenuState(update),
             primaryAction          = action,
             isPrimaryActionEnabled = enabled,
@@ -296,7 +304,7 @@ class UpdateListItemViewModel(
         }
     }
 
-    fun downloadWithMeteredWarning(downloadId: String, isResume: Boolean) {
+    private fun downloadWithMeteredWarning(downloadId: String, isResume: Boolean) {
         val c = controller ?: return
         val proceed = {
             if (isResume) c.resumeDownload(downloadId)

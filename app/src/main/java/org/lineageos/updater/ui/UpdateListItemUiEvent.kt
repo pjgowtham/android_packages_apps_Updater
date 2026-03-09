@@ -62,4 +62,6 @@ sealed class UpdateListItemUiEvent {
     ) : UpdateListItemUiEvent()
 
     data object ShowNotInstallableToast : UpdateListItemUiEvent()
+
+    data class ShowStatusToast(val messageRes: Int) : UpdateListItemUiEvent()
 }

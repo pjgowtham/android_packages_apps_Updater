@@ -16,13 +16,11 @@ sealed class UpdateListItemUiState {
 
     abstract val buildDate: String
     abstract val buildVersion: String
-    abstract val isSelected: Boolean
     abstract val menuState: MenuState
 
     data class Active(
         override val buildDate: String,
         override val buildVersion: String,
-        override val isSelected: Boolean,
         override val menuState: MenuState,
         val primaryAction: PrimaryAction,
         val isPrimaryActionEnabled: Boolean,
@@ -37,7 +35,6 @@ sealed class UpdateListItemUiState {
     data class Inactive(
         override val buildDate: String,
         override val buildVersion: String,
-        override val isSelected: Boolean,
         override val menuState: MenuState,
         val primaryAction: PrimaryAction,
         val isPrimaryActionEnabled: Boolean,
@@ -77,7 +74,6 @@ sealed class UpdateListItemUiState {
         val LOADING: UpdateListItemUiState = Inactive(
             buildDate = "",
             buildVersion = "",
-            isSelected = false,
             menuState = MenuState(showDelete = false, showCopyUrl = false, showExport = false),
             primaryAction = PrimaryAction.DOWNLOAD,
             isPrimaryActionEnabled = false,

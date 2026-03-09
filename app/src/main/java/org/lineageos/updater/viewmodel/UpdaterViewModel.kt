@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.lineageos.updater.controller.UpdaterController
+import org.lineageos.updater.controller.updaterControllerEvents
 import org.lineageos.updater.model.UpdateInfo
 import org.lineageos.updater.repository.UpdaterRepository
 import org.lineageos.updater.repository.UpdaterRepository.UpdateResult
@@ -53,6 +54,14 @@ class UpdaterViewModel(application: Application) : AndroidViewModel(application)
     val updateCheckState: StateFlow<UpdateCheckState> = _updateCheckState.asStateFlow()
     val updateCheckStateLiveData: LiveData<UpdateCheckState> = updateCheckState.asLiveData()
 
+    init {
+        // React to controller state changes without requiring the Activity to
+        // forward broadcasts manually.
+        viewModelScope.launch {
+            application.updaterControllerEvents().collect { refreshUiState() }
+        }
+    }
+
     fun refreshUpdates() {
         if (_updateCheckState.value.isRefreshing) return
         viewModelScope.launch {
@@ -70,8 +79,7 @@ class UpdaterViewModel(application: Application) : AndroidViewModel(application)
         _updateCheckState.update { it.copy(fetchResult = null) }
     }
 
-    /** Re-reads the controller's current update list and pushes it into [uiState]. */
-    fun refreshUiState() {
+    private fun refreshUiState() {
         _uiState.update {
             it.copy(
                 updates = controller.updates.sortedByDescending { u -> u.timestamp },
