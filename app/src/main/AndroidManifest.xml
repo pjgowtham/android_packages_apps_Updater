@@ -26,6 +26,10 @@
         android:usesCleartextTraffic="false">
 
         <activity
+            android:name=".preferences.PreferencesActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".UpdatesActivity"
             android:excludeFromRecents="true"
             android:exported="true"

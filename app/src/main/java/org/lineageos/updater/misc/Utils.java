@@ -20,7 +20,6 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
@@ -325,10 +324,6 @@ public class Utils {
         return isAB;
     }
 
-    public static boolean hasTouchscreen(Context context) {
-        return context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_TOUCHSCREEN);
-    }
-
     public static void addToClipboard(Context context, String label, String text) {
         ClipboardManager clipboard = (ClipboardManager) context.getSystemService(
                 Context.CLIPBOARD_SERVICE);
@@ -339,19 +334,6 @@ public class Utils {
     public static boolean isEncrypted(Context context, File file) {
         StorageManager sm = (StorageManager) context.getSystemService(Context.STORAGE_SERVICE);
         return sm.isEncrypted(file);
-    }
-
-    public static int getUpdateCheckSetting(Context context) {
-        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
-        if (!preferences.getBoolean(Constants.PREF_PERIODIC_CHECK_ENABLED, true)) {
-            return 0;
-        }
-        String value = preferences.getString(Constants.CheckInterval.PREF_KEY, null);
-        return switch (Constants.CheckInterval.fromValue(value)) {
-            case DAILY -> 1;
-            case MONTHLY -> 3;
-            default -> 2;
-        };
     }
 
     public static boolean isRecoveryUpdateExecPresent() {

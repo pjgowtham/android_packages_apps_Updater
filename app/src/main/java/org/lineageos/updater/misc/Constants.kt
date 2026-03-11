@@ -16,21 +16,6 @@ object Constants {
     const val PREF_AB_PERF_MODE = "ab_perf_mode"
     const val PREF_AUTO_DELETE_UPDATES = "auto_delete_updates"
     const val PREF_METERED_NETWORK_WARNING = "pref_metered_network_warning"
-    const val PREF_PERIODIC_CHECK_ENABLED = "periodic_check_enabled"
-
-    enum class CheckInterval(val value: String, val duration: Duration) {
-        DAILY("daily", 1.days),
-        MONTHLY("monthly", 30.days),
-        WEEKLY("weekly", 7.days);
-
-        companion object {
-            const val PREF_KEY = "check_interval"
-
-            @JvmStatic
-            fun fromValue(value: String?) =
-                entries.firstOrNull { it.value == value } ?: WEEKLY
-        }
-    }
 
     /**
      * Internal preferences

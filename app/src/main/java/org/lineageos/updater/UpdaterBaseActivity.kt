@@ -5,6 +5,7 @@
 
 package org.lineageos.updater
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import androidx.activity.ComponentActivity
@@ -31,10 +32,12 @@ import com.android.settingslib.spa.framework.compose.LocalNavController
 import com.android.settingslib.spa.framework.compose.NavControllerWrapper
 import com.android.settingslib.spa.framework.theme.SettingsTheme
 import com.android.settingslib.spa.widget.scaffold.RegularScaffold
+import org.lineageos.updater.preferences.PreferencesActivity
 
 abstract class UpdaterBaseActivity : ComponentActivity() {
 
     private var legacyView: View? = null
+
     private val refreshEnabled = mutableStateOf(true)
 
     protected fun setRefreshEnabled(enabled: Boolean) {
@@ -56,16 +59,15 @@ abstract class UpdaterBaseActivity : ComponentActivity() {
                     override fun navigateBack() = finish()
                 }
             }
+
             CompositionLocalProvider(LocalNavController provides navController) {
                 SettingsTheme {
                     RegularScaffold(
                         title = stringResource(R.string.display_name),
                         actions = {
-                            val enabled by refreshEnabled
-
                             IconButton(
                                 onClick = { onRefreshClick() },
-                                enabled = enabled,
+                                enabled = refreshEnabled.value,
                             ) {
                                 Icon(
                                     painter = painterResource(R.drawable.ic_menu_refresh),
@@ -97,7 +99,12 @@ abstract class UpdaterBaseActivity : ComponentActivity() {
                                     text = { Text(stringResource(R.string.menu_preferences)) },
                                     onClick = {
                                         menuExpanded = false
-                                        onPreferencesClick()
+                                        startActivity(
+                                            Intent(
+                                                this@UpdaterBaseActivity,
+                                                PreferencesActivity::class.java,
+                                            )
+                                        )
                                     },
                                 )
                                 DropdownMenuItem(
@@ -125,6 +132,5 @@ abstract class UpdaterBaseActivity : ComponentActivity() {
 
     open fun onRefreshClick() {}
     open fun onLocalUpdateClick() {}
-    open fun onPreferencesClick() {}
     open fun onChangelogClick() {}
 }

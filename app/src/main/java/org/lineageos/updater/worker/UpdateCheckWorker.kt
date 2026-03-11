@@ -7,7 +7,6 @@ package org.lineageos.updater.worker
 
 import android.content.Context
 import android.util.Log
-import androidx.preference.PreferenceManager
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
@@ -18,9 +17,10 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import org.lineageos.updater.NotificationHelper
+import org.lineageos.updater.data.CheckInterval
+import org.lineageos.updater.data.NotificationHelper
+import org.lineageos.updater.data.PreferencesRepository
 import org.lineageos.updater.data.UpdaterRepository
-import org.lineageos.updater.misc.Constants
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.toJavaDuration
 
@@ -61,7 +61,11 @@ class UpdateCheckWorker(
 
         @JvmStatic
         fun reschedulePeriodicCheck(context: Context) {
-            enqueuePeriodicCheck(context, ExistingPeriodicWorkPolicy.UPDATE)
+            enqueuePeriodicCheck(
+                context = context,
+                interval = PreferencesRepository(context).getCheckInterval(),
+                policy = ExistingPeriodicWorkPolicy.UPDATE,
+            )
         }
 
         fun scheduleOneshotCheck(context: Context) {
@@ -79,20 +83,29 @@ class UpdateCheckWorker(
             Log.d(TAG, "Scheduled one-shot update check")
         }
 
-        fun schedulePeriodicCheck(context: Context) {
-            enqueuePeriodicCheck(context, ExistingPeriodicWorkPolicy.KEEP)
+        @JvmStatic
+        @JvmOverloads
+        fun schedulePeriodicCheck(
+            context: Context,
+            interval: CheckInterval = PreferencesRepository(context).getCheckInterval(),
+            replaceExisting: Boolean = false,
+        ) {
+            enqueuePeriodicCheck(
+                context = context,
+                interval = interval,
+                policy = if (replaceExisting) {
+                    ExistingPeriodicWorkPolicy.UPDATE
+                } else {
+                    ExistingPeriodicWorkPolicy.KEEP
+                },
+            )
         }
 
         private fun enqueuePeriodicCheck(
             context: Context,
+            interval: CheckInterval,
             policy: ExistingPeriodicWorkPolicy,
         ) {
-            val preferences = PreferenceManager.getDefaultSharedPreferences(context)
-            if (!preferences.getBoolean(Constants.PREF_PERIODIC_CHECK_ENABLED, true)) return
-
-            val intervalValue = preferences.getString(Constants.CheckInterval.PREF_KEY, null)
-            val interval = Constants.CheckInterval.fromValue(intervalValue)
-
             val request = PeriodicWorkRequestBuilder<UpdateCheckWorker>(
                 interval.duration.toJavaDuration(),
             )

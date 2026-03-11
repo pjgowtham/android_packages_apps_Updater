@@ -29,11 +29,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.Spinner;
-import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -52,20 +48,17 @@ import org.lineageos.updater.controller.UpdaterService;
 import org.lineageos.updater.data.Update;
 import org.lineageos.updater.download.DownloadClient;
 import org.lineageos.updater.misc.Constants;
-import org.lineageos.updater.misc.Constants.CheckInterval;
 import org.lineageos.updater.misc.DeviceInfoUtils;
 import org.lineageos.updater.misc.StringGenerator;
 import org.lineageos.updater.misc.Utils;
 import org.lineageos.updater.viewmodel.FetchResult;
 import org.lineageos.updater.viewmodel.UpdaterViewModel;
-import org.lineageos.updater.worker.UpdateCheckWorker;
 
 import java.util.List;
 
 public class UpdatesActivity extends UpdaterBaseActivity implements
         UpdateImporter.Callbacks {
 
-    private static final String TAG = "UpdatesActivity";
     private UpdaterService mUpdaterService;
     private BroadcastReceiver mBroadcastReceiver;
 
@@ -231,11 +224,6 @@ public class UpdatesActivity extends UpdaterBaseActivity implements
     }
 
     @Override
-    public void onPreferencesClick() {
-        showPreferencesDialog();
-    }
-
-    @Override
     public void onChangelogClick() {
         Intent openUrl = new Intent(Intent.ACTION_VIEW,
                 Uri.parse(Utils.getChangelogURL(this)));
@@ -359,79 +347,6 @@ public class UpdatesActivity extends UpdaterBaseActivity implements
 
     private void showToast(int stringId, int duration) {
         Toast.makeText(this, stringId, duration).show();
-    }
-
-    private void showPreferencesDialog() {
-        View view = LayoutInflater.from(this).inflate(R.layout.preferences_dialog, null);
-        Spinner autoCheckInterval = view.findViewById(R.id.preferences_auto_updates_check_interval);
-        Switch autoDelete = view.findViewById(R.id.preferences_auto_delete_updates);
-        Switch meteredNetworkWarning = view.findViewById(
-                R.id.preferences_metered_network_warning);
-        Switch abPerfMode = view.findViewById(R.id.preferences_ab_perf_mode);
-        Switch updateRecovery = view.findViewById(R.id.preferences_update_recovery);
-
-        if (!DeviceInfoUtils.isABDevice()) {
-            abPerfMode.setVisibility(View.GONE);
-        }
-
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        autoCheckInterval.setSelection(Utils.getUpdateCheckSetting(this));
-        autoDelete.setChecked(prefs.getBoolean(Constants.PREF_AUTO_DELETE_UPDATES, false));
-        meteredNetworkWarning.setChecked(prefs.getBoolean(Constants.PREF_METERED_NETWORK_WARNING, true));
-        abPerfMode.setChecked(prefs.getBoolean(Constants.PREF_AB_PERF_MODE, false));
-        boolean periodicCheckEnabled = prefs.getBoolean(
-                Constants.PREF_PERIODIC_CHECK_ENABLED, true);
-        String periodicCheckIntervalValue = prefs.getString(
-                CheckInterval.PREF_KEY, CheckInterval.WEEKLY.getValue());
-
-        // Only show update recovery option for non-AB devices with recovery update script
-        if (Utils.isRecoveryUpdateExecPresent()) {
-            updateRecovery.setVisibility(View.VISIBLE);
-            // Obtain and apply the user preference from SetupWizard.
-            updateRecovery.setChecked(DeviceInfoUtils.isRecoveryUpdateEnabled());
-        } // else: remains GONE (default from XML)
-
-        new AlertDialog.Builder(this)
-                .setTitle(R.string.menu_preferences)
-                .setView(view)
-                .setOnDismissListener(dialogInterface -> {
-                    int intervalPos = autoCheckInterval.getSelectedItemPosition();
-                    boolean checkEnabled = intervalPos != 0;
-                    String intervalValue = switch (intervalPos) {
-                        case 1 -> CheckInterval.DAILY.getValue();
-                        case 3 -> CheckInterval.MONTHLY.getValue();
-                        default -> CheckInterval.WEEKLY.getValue();
-                    };
-                    boolean scheduleChanged = periodicCheckEnabled != checkEnabled
-                            || (checkEnabled && !intervalValue.equals(periodicCheckIntervalValue));
-
-                    prefs.edit()
-                            .putBoolean(Constants.PREF_PERIODIC_CHECK_ENABLED, checkEnabled)
-                            .putString(CheckInterval.PREF_KEY, intervalValue)
-                            .putBoolean(Constants.PREF_AUTO_DELETE_UPDATES, autoDelete.isChecked())
-                            .putBoolean(Constants.PREF_METERED_NETWORK_WARNING,
-                                    meteredNetworkWarning.isChecked())
-                            .putBoolean(Constants.PREF_AB_PERF_MODE, abPerfMode.isChecked())
-                            .apply();
-
-                    if (scheduleChanged) {
-                        if (checkEnabled) {
-                            UpdateCheckWorker.reschedulePeriodicCheck(this);
-                        } else {
-                            UpdateCheckWorker.cancelPeriodicCheck(this);
-                        }
-                    }
-
-                    if (DeviceInfoUtils.isABDevice()) {
-                        boolean enableABPerfMode = abPerfMode.isChecked();
-                        mUpdaterService.getUpdaterController().setPerformanceMode(enableABPerfMode);
-                    }
-                    if (Utils.isRecoveryUpdateExecPresent()) {
-                        boolean enableRecoveryUpdate = updateRecovery.isChecked();
-                        DeviceInfoUtils.setRecoveryUpdateEnabled(enableRecoveryUpdate);
-                    }
-                })
-                .show();
     }
 
     private void maybeShowWelcomeMessage() {

@@ -17,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.lineageos.updater.controller.UpdaterService
 import org.lineageos.updater.data.NotificationHelper
+import org.lineageos.updater.data.PreferencesRepository
 import org.lineageos.updater.misc.Constants
 import org.lineageos.updater.misc.DeviceInfoUtils
 import org.lineageos.updater.misc.Utils
@@ -39,8 +40,11 @@ class UpdaterReceiver : BroadcastReceiver() {
                         pendingResult.finish()
                     }
                 }
-                UpdateCheckWorker.schedulePeriodicCheck(context)
-                UpdateCheckWorker.scheduleOneshotCheck(context)
+                val prefs = PreferencesRepository(context)
+                if (prefs.getPeriodicCheckEnabled()) {
+                    UpdateCheckWorker.schedulePeriodicCheck(context, prefs.getCheckInterval())
+                    UpdateCheckWorker.scheduleOneshotCheck(context)
+                }
 
                 val pref = PreferenceManager.getDefaultSharedPreferences(context)
 
