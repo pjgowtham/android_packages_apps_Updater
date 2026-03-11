@@ -15,7 +15,6 @@
  */
 package org.lineageos.updater.misc;
 
-import android.app.AlarmManager;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -45,10 +44,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Enumeration;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -63,10 +60,6 @@ public class Utils {
         return new File(context.getString(R.string.download_path));
     }
 
-    public static File getCachedUpdateList(Context context) {
-        return new File(context.getCacheDir(), "updates.json");
-    }
-
     private static Update parseJsonUpdate(JSONObject object) throws JSONException {
         return new Update.Builder()
             .setTimestamp(object.getLong("datetime"))
@@ -77,23 +70,6 @@ public class Utils {
             .setDownloadUrl(object.getString("url"))
             .setVersion(object.getString("version"))
             .build();
-    }
-
-    public static boolean isCompatible(Update update) {
-        if (update.getVersion().compareTo(DeviceInfoUtils.getBuildVersion()) < 0) {
-            Log.d(TAG, update.getName() + " is older than current Android version");
-            return false;
-        }
-        if (!DeviceInfoUtils.isDowngradingAllowed() &&
-                update.getTimestamp() <= DeviceInfoUtils.getBuildDateTimestamp()) {
-            Log.d(TAG, update.getName() + " is older than/equal to the current build");
-            return false;
-        }
-        if (!update.getType().equalsIgnoreCase(DeviceInfoUtils.getReleaseType())) {
-            Log.d(TAG, update.getName() + " has type " + update.getType());
-            return false;
-        }
-        return true;
     }
 
     private static boolean compareVersions(String a, String b, boolean allowMajorUpgrades) {
@@ -116,14 +92,26 @@ public class Utils {
         boolean allowMajorUpgrades = DeviceInfoUtils.isMajorUpdateAllowed();
 
         return (DeviceInfoUtils.isDowngradingAllowed() ||
-                update.getTimestamp() > DeviceInfoUtils.getBuildDateTimestamp()) &&
+                update.getTimestamp() >= DeviceInfoUtils.getBuildDateTimestamp()) &&
                 compareVersions(
                         update.getVersion(),
                         DeviceInfoUtils.getBuildVersion(),
                         allowMajorUpgrades);
     }
 
-    public static List<Update> parseJson(File file, boolean compatibleOnly)
+    /**
+     * Checks whether the given update matches the currently running build
+     * by comparing timestamps. Used to exclude the current build from
+     * server query results while still allowing it to be installed locally.
+     *
+     * @param update the update to check
+     * @return {@code true} if the update's timestamp equals the current build timestamp
+     */
+    public static boolean isCurrentBuild(Update update) {
+        return update.getTimestamp() == DeviceInfoUtils.getBuildDateTimestamp();
+    }
+
+    public static List<Update> parseJson(File file)
             throws IOException, JSONException {
         List<Update> updates = new ArrayList<>();
 
@@ -141,12 +129,7 @@ public class Utils {
                 continue;
             }
             try {
-                Update update = parseJsonUpdate(updatesList.getJSONObject(i));
-                if (!compatibleOnly || isCompatible(update)) {
-                    updates.add(update);
-                } else {
-                    Log.d(TAG, "Ignoring incompatible update " + update.getName());
-                }
+                updates.add(parseJsonUpdate(updatesList.getJSONObject(i)));
             } catch (JSONException e) {
                 Log.e(TAG, "Could not parse update object, index=" + i, e);
             }
@@ -204,31 +187,6 @@ public class Utils {
     public static boolean isNetworkMetered(Context context) {
         ConnectivityManager cm = context.getSystemService(ConnectivityManager.class);
         return cm.isActiveNetworkMetered();
-    }
-
-    /**
-     * Compares two json formatted updates list files
-     *
-     * @param oldJson old update list
-     * @param newJson new update list
-     * @return true if newJson has at least a compatible update not available in oldJson
-     */
-    public static boolean checkForNewUpdates(File oldJson, File newJson)
-            throws IOException, JSONException {
-        List<Update> oldList = parseJson(oldJson, true);
-        List<Update> newList = parseJson(newJson, true);
-        Set<String> oldIds = new HashSet<>();
-        for (Update update : oldList) {
-            oldIds.add(update.getDownloadId());
-        }
-        // In case of no new updates, the old list should
-        // have all (if not more) the updates
-        for (Update update : newList) {
-            if (!oldIds.contains(update.getDownloadId())) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /**
@@ -385,24 +343,15 @@ public class Utils {
 
     public static int getUpdateCheckSetting(Context context) {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
-        return preferences.getInt(Constants.PREF_AUTO_UPDATES_CHECK_INTERVAL,
-                Constants.AUTO_UPDATES_CHECK_INTERVAL_WEEKLY);
-    }
-
-    public static boolean isUpdateCheckEnabled(Context context) {
-        return getUpdateCheckSetting(context) != Constants.AUTO_UPDATES_CHECK_INTERVAL_NEVER;
-    }
-
-    public static long getUpdateCheckInterval(Context context) {
-        switch (Utils.getUpdateCheckSetting(context)) {
-            case Constants.AUTO_UPDATES_CHECK_INTERVAL_DAILY:
-                return AlarmManager.INTERVAL_DAY;
-            case Constants.AUTO_UPDATES_CHECK_INTERVAL_WEEKLY:
-            default:
-                return AlarmManager.INTERVAL_DAY * 7;
-            case Constants.AUTO_UPDATES_CHECK_INTERVAL_MONTHLY:
-                return AlarmManager.INTERVAL_DAY * 30;
+        if (!preferences.getBoolean(Constants.PREF_PERIODIC_CHECK_ENABLED, true)) {
+            return 0;
         }
+        String value = preferences.getString(Constants.CheckInterval.PREF_KEY, null);
+        return switch (Constants.CheckInterval.fromValue(value)) {
+            case DAILY -> 1;
+            case MONTHLY -> 3;
+            default -> 2;
+        };
     }
 
     public static boolean isRecoveryUpdateExecPresent() {

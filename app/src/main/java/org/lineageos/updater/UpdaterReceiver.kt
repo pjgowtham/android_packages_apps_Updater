@@ -12,10 +12,15 @@ import android.os.PowerManager
 import androidx.core.content.edit
 import androidx.core.content.getSystemService
 import androidx.preference.PreferenceManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.lineageos.updater.controller.UpdaterService
 import org.lineageos.updater.data.NotificationHelper
 import org.lineageos.updater.misc.Constants
 import org.lineageos.updater.misc.DeviceInfoUtils
+import org.lineageos.updater.misc.Utils
+import org.lineageos.updater.worker.UpdateCheckWorker
 
 class UpdaterReceiver : BroadcastReceiver() {
 
@@ -26,6 +31,17 @@ class UpdaterReceiver : BroadcastReceiver() {
             }
 
             Intent.ACTION_BOOT_COMPLETED -> {
+                val pendingResult = goAsync()
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        Utils.cleanupDownloadsDir(context)
+                    } finally {
+                        pendingResult.finish()
+                    }
+                }
+                UpdateCheckWorker.schedulePeriodicCheck(context)
+                UpdateCheckWorker.scheduleOneshotCheck(context)
+
                 val pref = PreferenceManager.getDefaultSharedPreferences(context)
 
                 val downloadId = pref.getString(Constants.PREF_NEEDS_REBOOT_ID, null)

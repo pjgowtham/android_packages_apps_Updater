@@ -5,20 +5,32 @@
 
 package org.lineageos.updater.misc
 
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
+
 object Constants {
 
     /**
      * User preferences
      */
-    const val AUTO_UPDATES_CHECK_INTERVAL_NEVER = 0
-    const val AUTO_UPDATES_CHECK_INTERVAL_DAILY = 1
-    const val AUTO_UPDATES_CHECK_INTERVAL_WEEKLY = 2
-    const val AUTO_UPDATES_CHECK_INTERVAL_MONTHLY = 3
-
     const val PREF_AB_PERF_MODE = "ab_perf_mode"
     const val PREF_AUTO_DELETE_UPDATES = "auto_delete_updates"
-    const val PREF_AUTO_UPDATES_CHECK_INTERVAL = "auto_updates_check_interval"
     const val PREF_METERED_NETWORK_WARNING = "pref_metered_network_warning"
+    const val PREF_PERIODIC_CHECK_ENABLED = "periodic_check_enabled"
+
+    enum class CheckInterval(val value: String, val duration: Duration) {
+        DAILY("daily", 1.days),
+        MONTHLY("monthly", 30.days),
+        WEEKLY("weekly", 7.days);
+
+        companion object {
+            const val PREF_KEY = "check_interval"
+
+            @JvmStatic
+            fun fromValue(value: String?) =
+                entries.firstOrNull { it.value == value } ?: WEEKLY
+        }
+    }
 
     /**
      * Internal preferences
@@ -30,7 +42,6 @@ object Constants {
     const val PREF_INSTALL_NOTIFIED = "install_notified"
     const val PREF_INSTALL_OLD_TIMESTAMP = "install_old_timestamp"
     const val PREF_INSTALL_PACKAGE_PATH = "install_package_path"
-    const val PREF_LAST_UPDATE_CHECK = "last_update_check"
     const val PREF_NEEDS_REBOOT_ID = "needs_reboot_id"
 
     /**
