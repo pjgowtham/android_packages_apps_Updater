@@ -18,16 +18,16 @@ package org.lineageos.updater.controller;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
-import android.database.sqlite.SQLiteDatabase;
 import android.os.PowerManager;
 import android.os.SystemClock;
 import android.util.Log;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
-import org.lineageos.updater.UpdatesDbHelper;
 import org.lineageos.updater.data.Update;
 import org.lineageos.updater.data.UpdateStatus;
+import org.lineageos.updater.data.UpdaterDbRepository;
+import org.lineageos.updater.data.source.local.UpdaterDatabase;
 import org.lineageos.updater.download.DownloadClient;
 import org.lineageos.updater.misc.DeviceInfoUtils;
 import org.lineageos.updater.misc.Utils;
@@ -35,11 +35,11 @@ import org.lineageos.updater.misc.Utils;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class UpdaterController {
 
@@ -57,7 +57,7 @@ public class UpdaterController {
 
     private final Context mContext;
     private final LocalBroadcastManager mBroadcastManager;
-    private final UpdatesDbHelper mUpdatesDbHelper;
+    private final UpdaterDbRepository mUpdatesRepository;
 
     private final PowerManager.WakeLock mWakeLock;
 
@@ -75,18 +75,19 @@ public class UpdaterController {
 
     private UpdaterController(Context context) {
         mBroadcastManager = LocalBroadcastManager.getInstance(context);
-        mUpdatesDbHelper = new UpdatesDbHelper(context);
+        mUpdatesRepository = new UpdaterDbRepository(UpdaterDatabase.getInstance(context).updateDao());
         mDownloadRoot = Utils.getDownloadPath(context);
         PowerManager powerManager = context.getSystemService(PowerManager.class);
         mWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Updater:wakelock");
         mWakeLock.setReferenceCounted(false);
         mContext = context.getApplicationContext();
 
-        Utils.cleanupDownloadsDir(context);
-
-        for (Update update : mUpdatesDbHelper.getUpdates()) {
-            addUpdate(update, false);
-        }
+        new Thread(() -> {
+            Utils.cleanupDownloadsDir(context);
+            for (Update update : mUpdatesRepository.getUpdates()) {
+                addUpdate(update, false);
+            }
+        }).start();
     }
 
     private static class DownloadEntry {
@@ -97,7 +98,7 @@ public class UpdaterController {
         }
     }
 
-    private final Map<String, DownloadEntry> mDownloads = new HashMap<>();
+    private final Map<String, DownloadEntry> mDownloads = new ConcurrentHashMap<>();
 
     void notifyUpdateChange(String downloadId) {
         Intent intent = new Intent();
@@ -177,8 +178,7 @@ public class UpdaterController {
                     newUpdate = builder.build();
                     entry.mUpdate = newUpdate;
                 }
-                new Thread(() -> mUpdatesDbHelper.addUpdateWithOnConflict(newUpdate,
-                        SQLiteDatabase.CONFLICT_REPLACE)).start();
+                new Thread(() -> mUpdatesRepository.addUpdate(newUpdate)).start();
                 notifyUpdateChange(downloadId);
             }
 
@@ -267,14 +267,13 @@ public class UpdaterController {
                 Update update = entry.mUpdate;
                 File file = update.getFile();
                 if (file.exists() && verifyPackage(file)) {
-                    //noinspection ResultOfMethodCallIgnored
                     file.setReadable(true, false);
                     synchronized (entry) {
                         entry.mUpdate = entry.mUpdate.withStatus(UpdateStatus.VERIFIED);
                     }
-                    mUpdatesDbHelper.changeUpdateStatus(entry.mUpdate);
+                    mUpdatesRepository.changeStatus(downloadId, UpdateStatus.VERIFIED);
                 } else {
-                    mUpdatesDbHelper.removeUpdate(downloadId);
+                    mUpdatesRepository.removeUpdate(downloadId);
                     synchronized (entry) {
                         entry.mUpdate = entry.mUpdate.toBuilder()
                                 .setProgress(0)
@@ -499,7 +498,7 @@ public class UpdaterController {
             if (file.exists() && !file.delete()) {
                 Log.e(TAG, "Could not delete " + file.getAbsolutePath());
             }
-            mUpdatesDbHelper.removeUpdate(update.getDownloadId());
+            mUpdatesRepository.removeUpdate(update.getDownloadId());
         }).start();
     }
 
