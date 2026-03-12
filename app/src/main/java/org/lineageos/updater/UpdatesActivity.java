@@ -16,13 +16,12 @@
 package org.lineageos.updater;
 
 import android.app.Activity;
-import android.app.UiModeManager;
+import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.res.Configuration;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.icu.text.DateFormat;
@@ -31,35 +30,22 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
-import android.util.TypedValue;
 import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
-import android.widget.RelativeLayout;
 import android.widget.Spinner;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.ActionBar;
-import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.SwitchCompat;
-import androidx.appcompat.widget.Toolbar;
-import androidx.core.view.WindowInsetsCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.SimpleItemAnimator;
-
-import com.android.settingslib.spa.framework.theme.SettingsOpacity;
-import com.google.android.material.appbar.AppBarLayout;
-import com.google.android.material.appbar.CollapsingToolbarLayout;
 
 import org.lineageos.updater.controller.UpdaterController;
 import org.lineageos.updater.controller.UpdaterService;
@@ -74,10 +60,9 @@ import org.lineageos.updater.viewmodel.FetchResult;
 import org.lineageos.updater.viewmodel.UpdaterViewModel;
 import org.lineageos.updater.worker.UpdateCheckWorker;
 
-import java.util.ArrayList;
 import java.util.List;
 
-public class UpdatesActivity extends AppCompatActivity implements
+public class UpdatesActivity extends UpdaterBaseActivity implements
         UpdateImporter.Callbacks {
 
     private static final String TAG = "UpdatesActivity";
@@ -87,8 +72,6 @@ public class UpdatesActivity extends AppCompatActivity implements
     private UpdatesListAdapter mAdapter;
 
     private UpdaterViewModel mViewModel;
-
-    private boolean mIsTV;
 
     private Update mToBeExported = null;
     private final ActivityResultLauncher<Intent> mExportUpdate = registerForActivityResult(
@@ -103,7 +86,6 @@ public class UpdatesActivity extends AppCompatActivity implements
                 }
             });
 
-    private Menu mMenu;
     private UpdateImporter mUpdateImporter;
     private AlertDialog importDialog;
 
@@ -143,9 +125,6 @@ public class UpdatesActivity extends AppCompatActivity implements
 
         mUpdateImporter = new UpdateImporter(this, this);
 
-        UiModeManager uiModeManager = getSystemService(UiModeManager.class);
-        mIsTV = uiModeManager.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION;
-
         RecyclerView recyclerView = findViewById(R.id.recycler_view);
         mAdapter = new UpdatesListAdapter(this, this::exportUpdate);
         recyclerView.setAdapter(mAdapter);
@@ -180,34 +159,6 @@ public class UpdatesActivity extends AppCompatActivity implements
             }
         };
 
-        if (!mIsTV) {
-            Toolbar toolbar = findViewById(R.id.toolbar);
-            setSupportActionBar(toolbar);
-            ActionBar actionBar = getSupportActionBar();
-            if (actionBar != null) {
-                actionBar.setDisplayShowTitleEnabled(false);
-                actionBar.setDisplayHomeAsUpEnabled(true);
-                final int statusBarHeight;
-                TypedValue tv = new TypedValue();
-                if (getTheme().resolveAttribute(android.R.attr.actionBarSize, tv, true)) {
-                    statusBarHeight = TypedValue.complexToDimensionPixelSize(
-                            tv.data, getResources().getDisplayMetrics());
-                } else {
-                    statusBarHeight = 0;
-                }
-                RelativeLayout headerContainer = findViewById(R.id.header_container);
-                recyclerView.setOnApplyWindowInsetsListener((view, insets) -> {
-                    int top = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top;
-                    CollapsingToolbarLayout.LayoutParams lp =
-                            (CollapsingToolbarLayout.LayoutParams)
-                                    headerContainer.getLayoutParams();
-                    lp.topMargin = top + statusBarHeight;
-                    headerContainer.setLayoutParams(lp);
-                    return insets;
-                });
-            }
-        }
-
         TextView headerTitle = findViewById(R.id.header_title);
         headerTitle.setText(getString(R.string.header_title_text,
                 DeviceInfoUtils.getBuildVersion()));
@@ -223,36 +174,6 @@ public class UpdatesActivity extends AppCompatActivity implements
         TextView headerSecurityPatch = findViewById(R.id.header_security_patch_level);
         headerSecurityPatch.setText(getString(R.string.header_android_security_update,
                 DeviceInfoUtils.getSecurityPatch()));
-
-        if (!mIsTV) {
-            // Switch between header title and appbar title minimizing overlaps
-            final CollapsingToolbarLayout collapsingToolbar = findViewById(R.id.collapsing_toolbar);
-            final AppBarLayout appBar = findViewById(R.id.app_bar);
-            appBar.addOnOffsetChangedListener(new AppBarLayout.OnOffsetChangedListener() {
-                boolean mIsShown = false;
-
-                @Override
-                public void onOffsetChanged(AppBarLayout appBarLayout, int verticalOffset) {
-                    int scrollRange = appBarLayout.getTotalScrollRange();
-                    if (!mIsShown && scrollRange + verticalOffset < 10) {
-                        collapsingToolbar.setTitle(getString(R.string.display_name));
-                        mIsShown = true;
-                    } else if (mIsShown && scrollRange + verticalOffset > 100) {
-                        collapsingToolbar.setTitle(null);
-                        mIsShown = false;
-                    }
-                }
-            });
-
-            if (!Utils.hasTouchscreen(this)) {
-                // This can't be collapsed without a touchscreen
-                appBar.setExpanded(false);
-            }
-        } else {
-            findViewById(R.id.refresh).setOnClickListener(v ->
-                    mViewModel.refreshUpdates());
-            findViewById(R.id.preferences).setOnClickListener(v -> showPreferencesDialog());
-        }
 
         maybeShowWelcomeMessage();
     }
@@ -293,44 +214,32 @@ public class UpdatesActivity extends AppCompatActivity implements
     }
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_toolbar, menu);
-        mMenu = menu;
-        return super.onCreateOptionsMenu(menu);
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        int itemId = item.getItemId();
-        if (itemId == R.id.menu_refresh) {
-            mViewModel.refreshUpdates();
-            return true;
-        } else if (itemId == R.id.menu_preferences) {
-            showPreferencesDialog();
-            return true;
-        } else if (itemId == R.id.menu_show_changelog) {
-            Intent openUrl = new Intent(Intent.ACTION_VIEW,
-                    Uri.parse(Utils.getChangelogURL(this)));
-            startActivity(openUrl);
-            return true;
-        } else if (itemId == R.id.menu_local_update) {
-            mUpdateImporter.openImportPicker();
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    public boolean onSupportNavigateUp() {
-        onBackPressed();
-        return true;
-    }
-
-    @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         if (!mUpdateImporter.onResult(requestCode, resultCode, data)) {
             super.onActivityResult(requestCode, resultCode, data);
         }
+    }
+
+    @Override
+    public void onRefreshClick() {
+        mViewModel.refreshUpdates();
+    }
+
+    @Override
+    public void onLocalUpdateClick() {
+        mUpdateImporter.openImportPicker();
+    }
+
+    @Override
+    public void onPreferencesClick() {
+        showPreferencesDialog();
+    }
+
+    @Override
+    public void onChangelogClick() {
+        Intent openUrl = new Intent(Intent.ACTION_VIEW,
+                Uri.parse(Utils.getChangelogURL(this)));
+        startActivity(openUrl);
     }
 
     @Override
@@ -401,23 +310,6 @@ public class UpdatesActivity extends AppCompatActivity implements
         }
     };
 
-    private void setRefreshEnabled(boolean enabled) {
-        if (!mIsTV) {
-            if (mMenu != null) {
-                MenuItem item = mMenu.findItem(R.id.menu_refresh);
-                item.setEnabled(enabled);
-                item.getIcon().setAlpha(enabled ? 255
-                        : (int) (255 * SettingsOpacity.Disabled));
-            }
-        } else {
-            View refreshButton = findViewById(R.id.refresh);
-            if (refreshButton != null) {
-                refreshButton.setEnabled(enabled);
-                refreshButton.setAlpha(enabled ? 1f : SettingsOpacity.Disabled);
-            }
-        }
-    }
-
     private void updateLastCheckedString(long lastCheckMillis) {
         if (lastCheckMillis <= 0) return;
         long lastCheckSeconds = lastCheckMillis / 1000;
@@ -472,11 +364,11 @@ public class UpdatesActivity extends AppCompatActivity implements
     private void showPreferencesDialog() {
         View view = LayoutInflater.from(this).inflate(R.layout.preferences_dialog, null);
         Spinner autoCheckInterval = view.findViewById(R.id.preferences_auto_updates_check_interval);
-        SwitchCompat autoDelete = view.findViewById(R.id.preferences_auto_delete_updates);
-        SwitchCompat meteredNetworkWarning = view.findViewById(
+        Switch autoDelete = view.findViewById(R.id.preferences_auto_delete_updates);
+        Switch meteredNetworkWarning = view.findViewById(
                 R.id.preferences_metered_network_warning);
-        SwitchCompat abPerfMode = view.findViewById(R.id.preferences_ab_perf_mode);
-        SwitchCompat updateRecovery = view.findViewById(R.id.preferences_update_recovery);
+        Switch abPerfMode = view.findViewById(R.id.preferences_ab_perf_mode);
+        Switch updateRecovery = view.findViewById(R.id.preferences_update_recovery);
 
         if (!DeviceInfoUtils.isABDevice()) {
             abPerfMode.setVisibility(View.GONE);
