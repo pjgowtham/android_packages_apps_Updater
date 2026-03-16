@@ -83,6 +83,13 @@ room {
     schemaDirectory("$projectDir/schemas")
 }
 
+// Exclude JVM/server-only modules unavailable in AOSP
+configurations.all {
+    exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-jdk8")
+    exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-slf4j")
+    exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-serialization-json-io")
+}
+
 dependencies {
     compileOnly(fileTree(mapOf("dir" to "../system_libs", "include" to listOf("*.jar"))))
 
@@ -103,6 +110,10 @@ dependencies {
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.ktor.client.android)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.serialization.kotlinx.json)
     implementation(libs.material)
 
     annotationProcessor(libs.androidx.room.compiler)
@@ -116,6 +127,8 @@ configure<GenerateBpPluginExtension> {
     availableInAOSP.set { module: Module ->
         when {
             module.group.startsWith("androidx") -> true
+            // kotlinx-io and any bridge modules that depend on it are not in AOSP
+            module.group == "org.jetbrains.kotlinx" && module.name.startsWith("kotlinx-io") -> false
             module.group.startsWith("org.jetbrains") -> true
             module.group == "com.google.android.material" -> true
             module.group == "com.google.errorprone" -> true
