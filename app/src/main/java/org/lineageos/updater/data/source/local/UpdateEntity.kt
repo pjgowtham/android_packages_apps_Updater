@@ -63,6 +63,7 @@ fun Update.toEntity() = UpdateEntity(
 
 fun UpdateEntity.toUpdate() = Update(
     downloadId = downloadId,
+    isAvailableOnline = downloadUrl != null,
     status = UpdateStatus.fromPersistentStatus(status),
     file = path?.let { File(it) },
     timestamp = timestamp,
