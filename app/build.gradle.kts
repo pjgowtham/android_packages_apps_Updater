@@ -98,7 +98,11 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.cardview)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material3.adaptive)
+    implementation(libs.androidx.compose.material3.adaptive.layout)
+    implementation(libs.androidx.compose.material3.adaptive.navigation)
     implementation(libs.androidx.compose.runtime)
+    implementation(libs.androidx.compose.runtime.retain.android)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.datastore.preferences)
@@ -126,6 +130,9 @@ configure<GenerateBpPluginExtension> {
     versionName.set(android.defaultConfig.versionName!!)
     availableInAOSP.set { module: Module ->
         when {
+            module.group == "androidx.compose.material3.adaptive" -> false
+            module.group == "androidx.compose.runtime" &&
+                (module.name.contains("runtime-retain")) -> false
             module.group.startsWith("androidx") -> true
             // kotlinx-io and any bridge modules that depend on it are not in AOSP
             module.group == "org.jetbrains.kotlinx" && module.name.startsWith("kotlinx-io") -> false
