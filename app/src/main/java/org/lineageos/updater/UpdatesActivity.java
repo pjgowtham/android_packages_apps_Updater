@@ -33,7 +33,6 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -136,7 +135,7 @@ public class UpdatesActivity extends UpdaterBaseActivity implements UpdateImport
         intentFilter.addAction(UpdaterController.ACTION_DOWNLOAD_PROGRESS);
         intentFilter.addAction(UpdaterController.ACTION_INSTALL_PROGRESS);
         intentFilter.addAction(UpdaterController.ACTION_UPDATE_REMOVED);
-        LocalBroadcastManager.getInstance(this).registerReceiver(mBroadcastReceiver, intentFilter);
+        registerReceiver(mBroadcastReceiver, intentFilter, Context.RECEIVER_NOT_EXPORTED);
     }
 
     @Override
@@ -152,7 +151,7 @@ public class UpdatesActivity extends UpdaterBaseActivity implements UpdateImport
 
     @Override
     public void onStop() {
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(mBroadcastReceiver);
+        unregisterReceiver(mBroadcastReceiver);
         if (mUpdaterService != null) {
             unbindService(mConnection);
         }
