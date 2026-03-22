@@ -29,7 +29,6 @@ import com.android.settingslib.spa.framework.compose.NavControllerWrapper
 import com.android.settingslib.spa.framework.theme.SettingsTheme
 import com.android.settingslib.spa.widget.preference.Preference
 import com.android.settingslib.spa.widget.preference.PreferenceModel
-import com.android.settingslib.spa.widget.scaffold.MoreOptionsAction
 import com.android.settingslib.spa.widget.scaffold.RegularScaffold
 import com.android.settingslib.spa.widget.ui.Category
 import org.lineageos.updater.data.UpdateStatus
@@ -108,14 +107,10 @@ abstract class UpdaterBaseActivity : ComponentActivity() {
                                     contentDescription = stringResource(R.string.menu_refresh),
                                 )
                             }
-
-                            MoreOptionsAction {
-                                MenuItem(stringResource(R.string.menu_show_changelog)) {
-                                    onChangelogClick()
-                                }
-                            }
                         },
                     ) {
+                        DevicInfoBanner()
+
                         AndroidView(
                             factory = { capturedView },
                             modifier = Modifier.fillMaxWidth(),
@@ -151,5 +146,4 @@ abstract class UpdaterBaseActivity : ComponentActivity() {
 
     open fun onRefreshClick() {}
     open fun onLocalUpdateClick() {}
-    open fun onChangelogClick() {}
 }
