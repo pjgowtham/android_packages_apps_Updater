@@ -56,6 +56,7 @@ import org.lineageos.updater.misc.StringGenerator;
 import org.lineageos.updater.misc.Utils;
 import org.lineageos.updater.model.UpdateInfo;
 import org.lineageos.updater.model.UpdateStatus;
+import org.lineageos.updater.util.NetworkMonitor;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -80,6 +81,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
     private final UpdatesListActivity mActivity;
 
     private AlertDialog infoDialog;
+    private final NetworkMonitor mNetworkMonitor;
 
     private enum Action {
         DOWNLOAD,
@@ -128,6 +130,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
 
     public UpdatesListAdapter(UpdatesListActivity activity) {
         mActivity = activity;
+        mNetworkMonitor = NetworkMonitor.getInstance(activity);
     }
 
     @NonNull
@@ -202,7 +205,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
             viewHolder.mProgressBar.setIndeterminate(true);
         } else {
             setButtonAction(viewHolder.mAction, Action.RESUME, downloadId,
-                    Utils.isNetworkAvailable(mActivity));
+                    mNetworkMonitor.getNetworkState().getValue().isOnline());
             String downloaded = Formatter.formatShortFileSize(mActivity,
                     update.getFile().length());
             String total = Formatter.formatShortFileSize(mActivity, update.getFileSize());
@@ -248,7 +251,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
             viewHolder.mMenu.setOnClickListener(getClickListener(update, false, viewHolder.mMenu));
             boolean canDownload = !mUpdaterController.isVerifyingUpdate(downloadId)
                     && !mUpdaterController.isInstallingUpdate(downloadId)
-                    && Utils.isNetworkAvailable(mActivity);
+                    && mNetworkMonitor.getNetworkState().getValue().isOnline();
             setButtonAction(viewHolder.mAction, Action.DOWNLOAD, downloadId, canDownload);
         }
         String fileSize = Formatter.formatShortFileSize(mActivity, update.getFileSize());
@@ -364,7 +367,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
 
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(mActivity);
         boolean warn = preferences.getBoolean(Constants.PREF_METERED_NETWORK_WARNING, true);
-        if (!(Utils.isNetworkMetered(mActivity) && warn)) {
+        if (!(mNetworkMonitor.getNetworkState().getValue().isMetered() && warn)) {
             downloadAction.run();
             return;
         }
