@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import org.lineageos.updater.data.AppStateRepository
 import org.lineageos.updater.data.Update
 import org.lineageos.updater.data.UpdatesRepository
 import org.lineageos.updater.util.NetworkMonitor
@@ -32,6 +33,7 @@ data class UpdatesUiState(
 class UpdatesViewModel(
     application: Application,
     private val repository: UpdatesRepository,
+    private val appStateRepository: AppStateRepository,
 ) : AndroidViewModel(application) {
 
     companion object {
@@ -40,7 +42,11 @@ class UpdatesViewModel(
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    UpdatesViewModel(application, UpdatesRepository.create(application)) as T
+                    UpdatesViewModel(
+                        application,
+                        UpdatesRepository.create(application),
+                        AppStateRepository(application),
+                    ) as T
             }
     }
 
@@ -55,6 +61,12 @@ class UpdatesViewModel(
     private val networkMonitor = NetworkMonitor.getInstance(application)
 
     init {
+        viewModelScope.launch {
+            appStateRepository.lastCheckedTimestampFlow.collect { ts ->
+                _uiState.update { it.copy(lastCheckedTimestamp = ts) }
+            }
+        }
+
         viewModelScope.launch {
             repository.observeLocalUpdates().collect { updates ->
                 _uiState.update { it.copy(updates = updates) }
@@ -79,6 +91,10 @@ class UpdatesViewModel(
             try {
                 _uiState.update { it.copy(isCheckingForUpdates = true, errorMessage = null) }
                 try {
+                    val fetchedAt = repository.fetchUpdates()
+                    if (fetchedAt != null) {
+                        appStateRepository.setLastCheckedTimestamp(fetchedAt)
+                    }
                     _uiState.update { it.copy(isCheckingForUpdates = false) }
                 } catch (e: Exception) {
                     _uiState.update {
