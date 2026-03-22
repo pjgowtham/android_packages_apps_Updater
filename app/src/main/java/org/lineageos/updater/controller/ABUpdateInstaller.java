@@ -29,6 +29,7 @@ import org.lineageos.updater.misc.Constants;
 import org.lineageos.updater.misc.Utils;
 import org.lineageos.updater.model.Update;
 import org.lineageos.updater.model.UpdateStatus;
+import org.lineageos.updater.util.BatteryMonitor;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -208,7 +209,8 @@ class ABUpdateInstaller {
             }
         }
 
-        boolean enableABPerfMode = PreferenceManager.getDefaultSharedPreferences(mContext)
+        boolean onAC = BatteryMonitor.getInstance(mContext).getBatteryState().getValue().getAcCharge();
+        boolean enableABPerfMode = onAC || PreferenceManager.getDefaultSharedPreferences(mContext)
                 .getBoolean(Constants.PREF_AB_PERF_MODE, false);
         mUpdateEngine.setPerformanceMode(enableABPerfMode);
 

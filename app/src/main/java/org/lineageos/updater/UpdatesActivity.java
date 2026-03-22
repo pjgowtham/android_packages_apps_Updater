@@ -72,6 +72,7 @@ import org.lineageos.updater.misc.StringGenerator;
 import org.lineageos.updater.misc.Utils;
 import org.lineageos.updater.model.Update;
 import org.lineageos.updater.model.UpdateInfo;
+import org.lineageos.updater.util.BatteryMonitor;
 
 import java.io.File;
 import java.io.IOException;
