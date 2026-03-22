@@ -15,6 +15,7 @@
  */
 package org.lineageos.updater;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.PowerManager;
@@ -32,6 +33,7 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
@@ -43,8 +45,6 @@ import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.settingslib.spa.framework.theme.SettingsOpacity;
-
-import com.google.android.material.snackbar.Snackbar;
 
 import org.lineageos.updater.controller.UpdaterController;
 import org.lineageos.updater.controller.UpdaterService;
@@ -63,6 +63,7 @@ import java.text.DateFormat;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.ViewHolder> {
 
@@ -71,7 +72,8 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
     private List<String> mDownloadIds;
     private String mSelectedDownload;
     private UpdaterController mUpdaterController;
-    private final UpdatesListActivity mActivity;
+    private final Activity mActivity;
+    private final Consumer<Update> mExportUpdateCallback;
 
     private AlertDialog infoDialog;
     private final BatteryMonitor mBatteryMonitor;
@@ -122,10 +124,11 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
         }
     }
 
-    public UpdatesListAdapter(UpdatesListActivity activity) {
+    public UpdatesListAdapter(Activity activity, Consumer<Update> exportUpdateCallback) {
         mActivity = activity;
         mBatteryMonitor = BatteryMonitor.getInstance(activity);
         mNetworkMonitor = NetworkMonitor.getInstance(activity);
+        mExportUpdateCallback = exportUpdateCallback;
     }
 
     @NonNull
@@ -387,8 +390,8 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
                     if (canInstall) {
                         downloadWithConfirmation(downloadId, true);
                     } else {
-                        mActivity.showSnackbar(R.string.snack_update_not_installable,
-                                Snackbar.LENGTH_LONG);
+                        Toast.makeText(mActivity, R.string.snack_update_not_installable,
+                                Toast.LENGTH_LONG).show();
                     }
                 } : null;
             }
@@ -405,8 +408,8 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
                             installDialog.show();
                         }
                     } else {
-                        mActivity.showSnackbar(R.string.snack_update_not_installable,
-                                Snackbar.LENGTH_LONG);
+                        Toast.makeText(mActivity, R.string.snack_update_not_installable,
+                                Toast.LENGTH_LONG).show();
                     }
                 } : null;
             }
@@ -613,7 +616,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
                 return true;
             } else if (itemId == R.id.menu_export_update) {
                 if (mActivity != null) {
-                    mActivity.exportUpdate(update);
+                    mExportUpdateCallback.accept(update);
                 }
                 return true;
             }
