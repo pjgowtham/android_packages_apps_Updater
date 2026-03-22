@@ -12,7 +12,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.CompositionLocalProvider
@@ -27,8 +27,11 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.android.settingslib.spa.framework.compose.LocalNavController
 import com.android.settingslib.spa.framework.compose.NavControllerWrapper
 import com.android.settingslib.spa.framework.theme.SettingsTheme
+import com.android.settingslib.spa.widget.preference.Preference
+import com.android.settingslib.spa.widget.preference.PreferenceModel
 import com.android.settingslib.spa.widget.scaffold.MoreOptionsAction
 import com.android.settingslib.spa.widget.scaffold.RegularScaffold
+import com.android.settingslib.spa.widget.ui.Category
 import org.lineageos.updater.data.UpdateStatus
 import org.lineageos.updater.preferences.PreferencesActivity
 
@@ -86,6 +89,11 @@ abstract class UpdaterBaseActivity : ComponentActivity() {
 
                         else -> stringResource(R.string.snack_updates_found)
                     }
+                    val localUpdateSummary =
+                        stringResource(R.string.local_update_import_summary)
+                    val preferencesSummary =
+                        stringResource(R.string.preferences_summary)
+
                     RegularScaffold(
                         title = titleText,
                         actions = {
@@ -102,17 +110,6 @@ abstract class UpdaterBaseActivity : ComponentActivity() {
                             }
 
                             MoreOptionsAction {
-                                MenuItem(stringResource(R.string.local_update_import)) {
-                                    onLocalUpdateClick()
-                                }
-                                MenuItem(stringResource(R.string.menu_preferences)) {
-                                    startActivity(
-                                        Intent(
-                                            this@UpdaterBaseActivity,
-                                            PreferencesActivity::class.java,
-                                        )
-                                    )
-                                }
                                 MenuItem(stringResource(R.string.menu_show_changelog)) {
                                     onChangelogClick()
                                 }
@@ -121,8 +118,28 @@ abstract class UpdaterBaseActivity : ComponentActivity() {
                     ) {
                         AndroidView(
                             factory = { capturedView },
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxWidth(),
                         )
+
+                        Category {
+                            Preference(object : PreferenceModel {
+                                override val title = stringResource(R.string.local_update_import)
+                                override val summary = { localUpdateSummary }
+                                override val onClick = { onLocalUpdateClick() }
+                            })
+                            Preference(object : PreferenceModel {
+                                override val title = stringResource(R.string.menu_preferences)
+                                override val summary = { preferencesSummary }
+                                override val onClick = {
+                                    startActivity(
+                                        Intent(
+                                            this@UpdaterBaseActivity,
+                                            PreferencesActivity::class.java,
+                                        )
+                                    )
+                                }
+                            })
+                        }
                     }
                 }
             }
