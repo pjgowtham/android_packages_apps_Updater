@@ -12,7 +12,17 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -20,12 +30,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.window.core.layout.WindowSizeClass
 import com.android.settingslib.spa.framework.compose.LocalNavController
 import com.android.settingslib.spa.framework.compose.NavControllerWrapper
 import com.android.settingslib.spa.framework.theme.SettingsTheme
 import com.android.settingslib.spa.widget.preference.Preference
 import com.android.settingslib.spa.widget.preference.PreferenceModel
 import com.android.settingslib.spa.widget.scaffold.RegularScaffold
+import com.android.settingslib.spa.widget.scaffold.SettingsScaffold
 import com.android.settingslib.spa.widget.ui.Category
 import com.android.settingslib.spa.widget.ui.LinearLoadingBar
 import org.lineageos.updater.data.UpdateStatus
@@ -83,16 +95,15 @@ abstract class UpdaterBaseActivity : ComponentActivity() {
 
                         else -> stringResource(R.string.snack_updates_found)
                     }
+                    val windowAdaptiveInfo = currentWindowAdaptiveInfo()
+                    val isWideScreen = windowAdaptiveInfo.windowSizeClass
+                        .isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
                     val localUpdateSummary =
                         stringResource(R.string.local_update_import_summary)
                     val preferencesSummary =
                         stringResource(R.string.preferences_summary)
 
-                    RegularScaffold(
-                        title = titleText,
-                    ) {
-                        LinearLoadingBar(isLoading = uiState.isCheckingForUpdates)
-                        DevicInfoBanner()
+                    val contentPane: @Composable () -> Unit = {
                         UpdatesCheck(
                             isRefreshing = uiState.isCheckingForUpdates,
                             isNetworkAvailable = networkState.isOnline,
@@ -122,6 +133,45 @@ abstract class UpdaterBaseActivity : ComponentActivity() {
                                     )
                                 }
                             })
+                        }
+                    }
+
+                    if (isWideScreen) {
+                        SettingsScaffold(
+                            title = titleText,
+                        ) { paddingValues ->
+                            Column(modifier = Modifier.fillMaxSize()) {
+                                Spacer(Modifier.height(paddingValues.calculateTopPadding()))
+                                LinearLoadingBar(isLoading = uiState.isCheckingForUpdates)
+                                Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                                    Column(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .fillMaxHeight()
+                                            .verticalScroll(rememberScrollState()),
+                                    ) {
+                                        DeviceInfoBanner()
+                                        Spacer(Modifier.height(paddingValues.calculateBottomPadding()))
+                                    }
+                                    Column(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .fillMaxHeight()
+                                            .verticalScroll(rememberScrollState()),
+                                    ) {
+                                        contentPane()
+                                        Spacer(Modifier.height(paddingValues.calculateBottomPadding()))
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        RegularScaffold(
+                            title = titleText,
+                        ) {
+                            LinearLoadingBar(isLoading = uiState.isCheckingForUpdates)
+                            DeviceInfoBanner()
+                            contentPane()
                         }
                     }
                 }
