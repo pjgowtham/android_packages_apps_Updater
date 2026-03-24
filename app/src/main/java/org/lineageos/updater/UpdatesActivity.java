@@ -24,11 +24,9 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
-import android.icu.text.DateFormat;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -45,10 +43,7 @@ import org.lineageos.updater.controller.UpdaterController;
 import org.lineageos.updater.controller.UpdaterService;
 import org.lineageos.updater.data.Update;
 import org.lineageos.updater.misc.Constants;
-import org.lineageos.updater.misc.StringGenerator;
 import org.lineageos.updater.misc.Utils;
-import org.lineageos.updater.util.BatteryMonitor;
-import org.lineageos.updater.util.NetworkMonitor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -117,9 +112,6 @@ public class UpdatesActivity extends UpdaterBaseActivity implements UpdateImport
                 .get(UpdatesViewModel.class);
 
         mViewModel.getUiStateLive().observe(this, state -> {
-            updateLastCheckedString(state.getLastCheckedTimestamp());
-            setRefreshEnabled(NetworkMonitor.getInstance(this).getNetworkState().getValue().isOnline()
-                    && !state.isCheckingForUpdates());
             if (state.getErrorMessage() != null) {
                 showToast(R.string.snack_updates_check_failed, Toast.LENGTH_LONG);
                 mViewModel.errorMessageShown();
@@ -172,11 +164,6 @@ public class UpdatesActivity extends UpdaterBaseActivity implements UpdateImport
         if (!mUpdateImporter.onResult(requestCode, resultCode, data)) {
             super.onActivityResult(requestCode, resultCode, data);
         }
-    }
-
-    @Override
-    public void onRefreshClick() {
-        mViewModel.fetchUpdates();
     }
 
     @Override
@@ -263,15 +250,6 @@ public class UpdatesActivity extends UpdaterBaseActivity implements UpdateImport
         controller.setUpdatesAvailableOnline(updateIds, true);
         mAdapter.setData(updateIds);
         mAdapter.notifyDataSetChanged();
-    }
-
-    private void updateLastCheckedString(long timestamp) {
-        long lastCheck = timestamp / 1000;
-        String lastCheckString = getString(R.string.header_last_updates_check,
-                StringGenerator.getDateLocalized(this, DateFormat.LONG, lastCheck),
-                StringGenerator.getTimeLocalized(this, lastCheck));
-        TextView headerLastCheck = findViewById(R.id.header_last_check);
-        headerLastCheck.setText(lastCheckString);
     }
 
     private void handleDownloadStatusChange(String downloadId) {

@@ -13,15 +13,11 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.viewinterop.AndroidView
 import com.android.settingslib.spa.framework.compose.LocalNavController
@@ -31,18 +27,15 @@ import com.android.settingslib.spa.widget.preference.Preference
 import com.android.settingslib.spa.widget.preference.PreferenceModel
 import com.android.settingslib.spa.widget.scaffold.RegularScaffold
 import com.android.settingslib.spa.widget.ui.Category
+import com.android.settingslib.spa.widget.ui.LinearLoadingBar
 import org.lineageos.updater.data.UpdateStatus
 import org.lineageos.updater.preferences.PreferencesActivity
+import org.lineageos.updater.util.NetworkMonitor
 
 abstract class UpdaterBaseActivity : ComponentActivity() {
 
     private var legacyView: View? = null
-    private val refreshEnabled = mutableStateOf(true)
     private val viewModel: UpdatesViewModel by viewModels { UpdatesViewModel.factory(application) }
-
-    protected fun setRefreshEnabled(enabled: Boolean) {
-        refreshEnabled.value = enabled
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,6 +55,8 @@ abstract class UpdaterBaseActivity : ComponentActivity() {
             CompositionLocalProvider(LocalNavController provides navController) {
                 SettingsTheme {
                     val uiState by viewModel.uiState.collectAsState()
+                    val networkState by NetworkMonitor.getInstance(this@UpdaterBaseActivity)
+                        .networkState.collectAsState()
                     val updates = uiState.updates
                     val titleText = when {
                         updates.isEmpty() && uiState.lastCheckedTimestamp == 0L ->
@@ -95,30 +90,23 @@ abstract class UpdaterBaseActivity : ComponentActivity() {
 
                     RegularScaffold(
                         title = titleText,
-                        actions = {
-                            val enabled by refreshEnabled
-
-                            IconButton(
-                                onClick = { onRefreshClick() },
-                                enabled = enabled,
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_menu_refresh),
-                                    contentDescription = stringResource(R.string.menu_refresh),
-                                )
-                            }
-                        },
                     ) {
+                        LinearLoadingBar(isLoading = uiState.isCheckingForUpdates)
                         DevicInfoBanner()
-
+                        UpdatesCheck(
+                            isRefreshing = uiState.isCheckingForUpdates,
+                            isNetworkAvailable = networkState.isOnline,
+                            lastCheckTimestamp = uiState.lastCheckedTimestamp,
+                            onCheckClick = viewModel::fetchUpdates,
+                        )
                         AndroidView(
                             factory = { capturedView },
                             modifier = Modifier.fillMaxWidth(),
                         )
-
                         Category {
                             Preference(object : PreferenceModel {
-                                override val title = stringResource(R.string.local_update_import)
+                                override val title =
+                                    stringResource(R.string.local_update_import)
                                 override val summary = { localUpdateSummary }
                                 override val onClick = { onLocalUpdateClick() }
                             })
@@ -144,6 +132,5 @@ abstract class UpdaterBaseActivity : ComponentActivity() {
     override fun <T : View> findViewById(id: Int): T? =
         super.findViewById(id) ?: legacyView?.findViewById(id)
 
-    open fun onRefreshClick() {}
     open fun onLocalUpdateClick() {}
 }

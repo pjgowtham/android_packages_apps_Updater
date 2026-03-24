@@ -77,6 +77,7 @@
     <string name="menu_refresh">Refresh</string>
     <string name="menu_preferences">System update preferences</string>
     <string name="preferences_summary">Sync, download and install</string>
+    <string name="check_for_updates">Check for updates</string>
 
     <!-- Background sync -->
     <string name="pref_category_background_sync">Background sync</string>
@@ -115,7 +116,7 @@
     <string name="header_android_security_update">Android security update: <xliff:g id="patch" example="January 1, 1970">%1$s</xliff:g></string>
     <string name="header_title_text">LineageOS\n%1$s</string>
     <string name="header_android_version">Android <xliff:g id="version" example="7.1.2">%1$s</xliff:g></string>
-    <string name="header_last_updates_check">Last checked: <xliff:g id="date" example="1 January 1970">%1$s</xliff:g> (<xliff:g id="time" example="01:23">%2$s</xliff:g>)</string>
+    <string name="header_last_updates_check">Last checked: <xliff:g id="time" example="5:30 PM">%1$s</xliff:g></string>
 
     <!-- Banner -->
     <string name="brand_name" translatable="false">LineageOS</string>
