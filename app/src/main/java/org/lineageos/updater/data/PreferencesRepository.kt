@@ -84,6 +84,16 @@ class PreferencesRepository(context: Context) {
 
     companion object {
         @JvmStatic
+        fun getPeriodicCheckEnabledBlocking(context: Context): Boolean = runBlocking {
+            PreferencesRepository(context).periodicCheckEnabledFlow.first()
+        }
+
+        @JvmStatic
+        fun getCheckIntervalBlocking(context: Context): CheckInterval = runBlocking {
+            PreferencesRepository(context).checkIntervalFlow.first()
+        }
+
+        @JvmStatic
         fun getAutoDeleteBlocking(context: Context): Boolean = runBlocking {
             PreferencesRepository(context).autoDeleteFlow.first()
         }

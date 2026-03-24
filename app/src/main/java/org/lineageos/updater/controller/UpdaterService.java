@@ -23,7 +23,6 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.content.pm.ServiceInfo;
 import android.os.Binder;
 import android.os.Bundle;
@@ -33,14 +32,13 @@ import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-import androidx.preference.PreferenceManager;
 
+import org.lineageos.updater.data.PreferencesRepository;
 import org.lineageos.updater.R;
 import org.lineageos.updater.UpdaterReceiver;
 import org.lineageos.updater.UpdatesActivity;
 import org.lineageos.updater.data.Update;
 import org.lineageos.updater.data.UpdateStatus;
-import org.lineageos.updater.misc.Constants;
 import org.lineageos.updater.misc.StringGenerator;
 import org.lineageos.updater.misc.Utils;
 
@@ -569,8 +567,7 @@ public class UpdaterService extends Service {
 
         Log.d(TAG, "Post-reboot cleanup for: " + downloadId);
 
-        SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(this);
-        boolean deleteUpdate = pref.getBoolean(Constants.PREF_AUTO_DELETE_UPDATES, false);
+        boolean deleteUpdate = PreferencesRepository.getAutoDeleteBlocking(this);
 
         // Always delete local updates
         boolean isLocal = Update.LOCAL_ID.equals(downloadId);

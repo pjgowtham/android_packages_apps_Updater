@@ -11,11 +11,10 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
 import android.os.UpdateEngine
-import androidx.preference.PreferenceManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import org.lineageos.updater.misc.Constants
+import org.lineageos.updater.data.PreferencesRepository
 
 data class BatteryState(
     val level: Float,
@@ -61,8 +60,6 @@ class BatteryMonitor private constructor(context: Context) {
         }
     }
 
-    private val prefs = PreferenceManager.getDefaultSharedPreferences(context)
-
     private val _batteryState = MutableStateFlow(
         context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
             ?.let { fromIntent(it) }
@@ -89,7 +86,7 @@ class BatteryMonitor private constructor(context: Context) {
             if (state.acCharge != prev.acCharge) {
                 try {
                     updateEngine?.setPerformanceMode(
-                        state.acCharge || prefs.getBoolean(Constants.PREF_AB_PERF_MODE, false)
+                        state.acCharge || PreferencesRepository.getAbPerfModeBlocking(context)
                     )
                 } catch (_: Exception) {
                     // Ignored
