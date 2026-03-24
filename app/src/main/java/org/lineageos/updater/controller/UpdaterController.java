@@ -29,7 +29,6 @@ import org.lineageos.updater.data.UpdateStatus;
 import org.lineageos.updater.data.source.local.UpdatesLocalDataSource;
 import org.lineageos.updater.data.source.local.UpdatesDatabase;
 import org.lineageos.updater.download.DownloadClient;
-import org.lineageos.updater.misc.DeviceInfoUtils;
 import org.lineageos.updater.misc.Utils;
 
 import java.io.File;
@@ -614,13 +613,6 @@ public class UpdaterController {
 
     public boolean isWaitingForReboot(String downloadId) {
         return ABUpdateInstaller.isWaitingForReboot(mContext, downloadId);
-    }
-
-    public void setPerformanceMode(boolean enable) {
-        if (!DeviceInfoUtils.isABDevice()) {
-            return;
-        }
-        ABUpdateInstaller.getInstance(mContext, this).setPerformanceMode(enable);
     }
 
     private void pauseActiveDownloads() {

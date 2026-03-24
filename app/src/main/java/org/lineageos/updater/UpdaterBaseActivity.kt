@@ -5,6 +5,7 @@
 
 package org.lineageos.updater
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import androidx.activity.ComponentActivity
@@ -26,6 +27,7 @@ import com.android.settingslib.spa.framework.compose.NavControllerWrapper
 import com.android.settingslib.spa.framework.theme.SettingsTheme
 import com.android.settingslib.spa.widget.scaffold.MoreOptionsAction
 import com.android.settingslib.spa.widget.scaffold.RegularScaffold
+import org.lineageos.updater.preferences.PreferencesActivity
 
 abstract class UpdaterBaseActivity : ComponentActivity() {
 
@@ -73,7 +75,12 @@ abstract class UpdaterBaseActivity : ComponentActivity() {
                                     onLocalUpdateClick()
                                 }
                                 MenuItem(stringResource(R.string.menu_preferences)) {
-                                    onPreferencesClick()
+                                    startActivity(
+                                        Intent(
+                                            this@UpdaterBaseActivity,
+                                            PreferencesActivity::class.java,
+                                        )
+                                    )
                                 }
                                 MenuItem(stringResource(R.string.menu_show_changelog)) {
                                     onChangelogClick()
@@ -96,6 +103,5 @@ abstract class UpdaterBaseActivity : ComponentActivity() {
 
     open fun onRefreshClick() {}
     open fun onLocalUpdateClick() {}
-    open fun onPreferencesClick() {}
     open fun onChangelogClick() {}
 }

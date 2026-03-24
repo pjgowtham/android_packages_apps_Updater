@@ -44,6 +44,7 @@ import com.android.settingslib.spa.framework.theme.SettingsOpacity;
 
 import org.lineageos.updater.controller.UpdaterController;
 import org.lineageos.updater.controller.UpdaterService;
+import org.lineageos.updater.data.PreferencesRepository;
 import org.lineageos.updater.data.Update;
 import org.lineageos.updater.data.UpdateStatus;
 import org.lineageos.updater.misc.Constants;
@@ -345,8 +346,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
                 ? () -> mUpdaterController.resumeDownload(downloadId)
                 : () -> mUpdaterController.startDownload(downloadId);
 
-        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(mActivity);
-        boolean warn = preferences.getBoolean(Constants.PREF_METERED_NETWORK_WARNING, true);
+        boolean warn = PreferencesRepository.getMeteredNetworkWarningBlocking(mActivity);
         if (!(mNetworkMonitor.getNetworkState().getValue().isMetered() && warn)) {
             downloadAction.run();
             return;
