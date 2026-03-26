@@ -205,4 +205,10 @@
     <string name="info_dialog_ok">Thanks for the info!</string>
     <string name="welcome_title">Welcome</string>
     <string name="welcome_message">Please note that when multiple updates are available, there is no need to go update-by-update, you can always install the latest one directly, and then safely delete old updates to free up storage space.</string>
+    <string name="latest_update">Latest update</string>
+    <string name="see_less_updates">See less</string>
+    <plurals name="see_more_updates">
+        <item quantity="one">See 1 more update</item>
+        <item quantity="other">See %d more updates</item>
+    </plurals>
 </resources>

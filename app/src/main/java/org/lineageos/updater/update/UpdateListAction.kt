@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.lineageos.updater.updates
+package org.lineageos.updater.update
 
 sealed class UpdateListOperation {
     data object Download : UpdateListOperation()
