@@ -7,10 +7,8 @@ package org.lineageos.updater
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.LiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -52,9 +50,6 @@ class UpdatesViewModel(
 
     private val _uiState = MutableStateFlow(UpdatesUiState())
     val uiState: StateFlow<UpdatesUiState> = _uiState.asStateFlow()
-
-    /** LiveData accessor for Java consumers (e.g. UpdatesActivity). */
-    val uiStateLive: LiveData<UpdatesUiState> = _uiState.asLiveData()
 
     private val fetchMutex = Mutex()
 
