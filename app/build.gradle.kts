@@ -93,6 +93,7 @@ configurations.all {
 dependencies {
     compileOnly(fileTree(mapOf("dir" to "../system_libs", "include" to listOf("*.jar"))))
 
+    debugImplementation(files("../system_libs/SettingsLib.jar", "../system_libs/SpaLib.jar"))
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     implementation(libs.androidx.activity.compose)
