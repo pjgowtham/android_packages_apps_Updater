@@ -13,20 +13,27 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.android.settingslib.spa.framework.compose.LocalNavController
 import com.android.settingslib.spa.framework.compose.NavControllerWrapper
@@ -82,52 +89,94 @@ abstract class UpdatesScaffoldActivity : ComponentActivity() {
 
                         else -> stringResource(R.string.display_name)
                     }
-                    SettingsScaffold(
-                        title = titleText,
-                    ) { paddingValues ->
-                        val localUpdateSummary =
-                            stringResource(R.string.local_update_import_summary)
-                        val preferencesSummary =
-                            stringResource(R.string.preferences_summary)
-                        Column(
-                            Modifier
-                                .fillMaxSize()
-                                .padding(paddingValues)
-                                .verticalScroll(rememberScrollState())
-                        ) {
-                            LinearLoadingBar(isLoading = uiState.isCheckingForUpdates)
-                            DeviceInfoBanner()
-                            UpdatesCheck(
-                                isRefreshing = uiState.isCheckingForUpdates,
-                                isNetworkAvailable = networkState.isOnline,
-                                lastCheckTimestamp = uiState.lastCheckedTimestamp,
-                                onCheckClick = viewModel::fetchUpdates,
-                            )
-                            AndroidView(
-                                factory = { capturedView },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .nestedScroll(rememberNestedScrollInteropConnection()),
-                            )
-                            Category {
-                                Preference(object : PreferenceModel {
-                                    override val title =
-                                        stringResource(R.string.local_update_import)
-                                    override val summary = { localUpdateSummary }
-                                    override val onClick = { onLocalUpdateClick() }
-                                })
-                                Preference(object : PreferenceModel {
-                                    override val title = stringResource(R.string.menu_preferences)
-                                    override val summary = { preferencesSummary }
-                                    override val onClick = {
-                                        startActivity(
-                                            Intent(
-                                                this@UpdatesScaffoldActivity,
-                                                PreferencesActivity::class.java,
-                                            )
+                    val isWideScreen =
+                        with(LocalDensity.current) {
+                            LocalWindowInfo.current.containerSize.width.toDp() >= 600.dp
+                        }
+                    val localUpdateSummary =
+                        stringResource(R.string.local_update_import_summary)
+                    val preferencesSummary =
+                        stringResource(R.string.preferences_summary)
+
+                    val contentPane: @Composable () -> Unit = {
+                        UpdatesCheck(
+                            isRefreshing = uiState.isCheckingForUpdates,
+                            isNetworkAvailable = networkState.isOnline,
+                            lastCheckTimestamp = uiState.lastCheckedTimestamp,
+                            onCheckClick = viewModel::fetchUpdates,
+                        )
+                        AndroidView(
+                            factory = { capturedView },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .nestedScroll(rememberNestedScrollInteropConnection()),
+                        )
+                        Category {
+                            Preference(object : PreferenceModel {
+                                override val title =
+                                    stringResource(R.string.local_update_import)
+                                override val summary = { localUpdateSummary }
+                                override val onClick = { onLocalUpdateClick() }
+                            })
+                            Preference(object : PreferenceModel {
+                                override val title = stringResource(R.string.menu_preferences)
+                                override val summary = { preferencesSummary }
+                                override val onClick = {
+                                    startActivity(
+                                        Intent(
+                                            this@UpdatesScaffoldActivity,
+                                            PreferencesActivity::class.java,
                                         )
+                                    )
+                                }
+                            })
+                        }
+                    }
+
+                    if (isWideScreen) {
+                        SettingsScaffold(
+                            title = titleText,
+                        ) { paddingValues ->
+                            Column(modifier = Modifier.fillMaxSize()) {
+                                Spacer(Modifier.height(paddingValues.calculateTopPadding()))
+                                LinearLoadingBar(isLoading = uiState.isCheckingForUpdates)
+                                Row(modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth()) {
+                                    Column(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .fillMaxHeight()
+                                            .verticalScroll(rememberScrollState()),
+                                    ) {
+                                        DeviceInfoBanner()
+                                        Spacer(Modifier.height(paddingValues.calculateBottomPadding()))
                                     }
-                                })
+                                    Column(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .fillMaxHeight()
+                                            .verticalScroll(rememberScrollState()),
+                                    ) {
+                                        contentPane()
+                                        Spacer(Modifier.height(paddingValues.calculateBottomPadding()))
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        SettingsScaffold(
+                            title = titleText,
+                        ) { paddingValues ->
+                            Column(
+                                Modifier
+                                    .fillMaxSize()
+                                    .padding(paddingValues)
+                                    .verticalScroll(rememberScrollState())
+                            ) {
+                                LinearLoadingBar(isLoading = uiState.isCheckingForUpdates)
+                                DeviceInfoBanner()
+                                contentPane()
                             }
                         }
                     }
