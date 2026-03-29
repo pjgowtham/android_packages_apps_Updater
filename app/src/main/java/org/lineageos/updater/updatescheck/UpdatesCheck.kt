@@ -26,8 +26,8 @@ import com.android.settingslib.spa.debug.UiModePreviews
 import com.android.settingslib.spa.framework.theme.SettingsDimension
 import com.android.settingslib.spa.framework.theme.SettingsTheme
 import org.lineageos.updater.R
-import org.lineageos.updater.misc.StringGenerator
-import java.text.DateFormat as JavaDateFormat
+import org.lineageos.updater.util.StringUtil
+import java.time.format.FormatStyle
 import java.util.Date
 
 private fun formatLastChecked(
@@ -39,7 +39,7 @@ private fun formatLastChecked(
         return time
     }
     val date =
-        StringGenerator.getDateLocalized(context, JavaDateFormat.MEDIUM, timestampMillis / 1000)
+        StringUtil.getDateLocalized(context, FormatStyle.MEDIUM, timestampMillis / 1000)
     return "$date, $time"
 }
 
