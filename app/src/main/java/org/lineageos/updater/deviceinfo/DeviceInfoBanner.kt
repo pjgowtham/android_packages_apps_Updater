@@ -16,7 +16,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import com.android.settingslib.spa.debug.UiModePreviews
 import com.android.settingslib.spa.framework.theme.SettingsDimension
@@ -25,7 +24,6 @@ import com.android.settingslib.spa.framework.theme.SettingsShape.CornerExtraLarg
 import com.android.settingslib.spa.framework.theme.SettingsTheme
 import org.lineageos.updater.deviceinfo.actions.DeviceInfoActionButtons
 import org.lineageos.updater.deviceinfo.actions.DeviceInfoTvAction
-import org.lineageos.updater.misc.StringGenerator
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -33,10 +31,8 @@ import java.time.format.DateTimeFormatter
 
 @Composable
 fun DeviceInfoBanner(modifier: Modifier = Modifier) {
-    val context = LocalContext.current
     val currentLocale = LocalConfiguration.current.locales[0]
-
-    val locale = remember(currentLocale) { StringGenerator.getCurrentLocale(context) }
+    val locale = currentLocale
     val buildVersion = remember { DeviceInfoUtils.buildVersion }
     val androidVersion = remember { DeviceInfoUtils.androidVersion }
     val buildDate = remember {

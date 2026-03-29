@@ -50,7 +50,8 @@ import org.lineageos.updater.data.Update;
 import org.lineageos.updater.data.UpdateStatus;
 import org.lineageos.updater.data.UserPreferencesRepository;
 import org.lineageos.updater.misc.Constants;
-import org.lineageos.updater.misc.StringGenerator;
+import org.lineageos.updater.util.StringUtil;
+import org.lineageos.updater.util.StringUtilKt;
 import org.lineageos.updater.misc.Utils;
 import org.lineageos.updater.util.BatteryMonitor;
 import org.lineageos.updater.util.BatteryState;
@@ -58,7 +59,7 @@ import org.lineageos.updater.util.InstallUtils;
 import org.lineageos.updater.util.NetworkMonitor;
 
 import java.io.IOException;
-import java.text.DateFormat;
+import java.time.format.FormatStyle;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -168,7 +169,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
             viewHolder.mPercentage.setText(percentage);
             long eta = update.getEta();
             if (eta > 0) {
-                CharSequence etaString = StringGenerator.formatETA(mActivity, eta * 1000);
+                CharSequence etaString = StringUtil.formatETA(mActivity, eta * 1000);
                 viewHolder.mProgressText.setText(mActivity.getString(
                         R.string.list_download_progress_eta_newer, downloaded, total, etaString));
             } else {
@@ -280,8 +281,8 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
 
         boolean activeLayout = update.getStatus().isInProgress();
 
-        String buildDate = StringGenerator.getDateLocalizedUTC(mActivity,
-                DateFormat.LONG, update.getTimestamp());
+        String buildDate = StringUtil.getDateLocalizedUTC(mActivity,
+                FormatStyle.LONG, update.getTimestamp());
         String buildVersion = mActivity.getString(R.string.list_build_version,
                 update.getVersion());
         viewHolder.mBuildDate.setText(buildDate);
@@ -538,8 +539,8 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
             return null;
         }
 
-        String buildDate = StringGenerator.getDateLocalizedUTC(mActivity,
-                DateFormat.MEDIUM, update.getTimestamp());
+        String buildDate = StringUtil.getDateLocalizedUTC(mActivity,
+                FormatStyle.MEDIUM, update.getTimestamp());
         String buildInfoText = mActivity.getString(R.string.list_build_version_date,
                 update.getVersion(), buildDate);
         return new AlertDialog.Builder(mActivity)
@@ -607,7 +608,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
     }
 
     private void showInfoDialog() {
-        String messageString = String.format(StringGenerator.getCurrentLocale(mActivity),
+        String messageString = String.format(StringUtilKt.getCurrentLocale(mActivity),
                 mActivity.getString(R.string.blocked_update_dialog_message),
                 Utils.getUpgradeBlockedURL(mActivity));
         SpannableString message = new SpannableString(messageString);
