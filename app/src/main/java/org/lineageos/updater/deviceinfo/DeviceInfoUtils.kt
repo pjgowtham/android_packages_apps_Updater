@@ -5,6 +5,7 @@
 
 package org.lineageos.updater.deviceinfo
 
+import android.os.Build
 import android.os.SystemProperties
 import com.android.settingslib.DeviceInfoUtils as SettingsLibDeviceInfoUtils
 
@@ -21,6 +22,10 @@ object DeviceInfoUtils : SettingsLibDeviceInfoUtils() {
     private const val PROP_UPDATER_ALLOW_DOWNGRADING = "lineage.updater.allow_downgrading"
     private const val PROP_UPDATER_URI = "lineage.updater.uri"
     private const val PROP_UPDATE_RECOVERY = "persist.vendor.recovery_update"
+
+    @JvmStatic
+    val androidVersion: String
+        get() = Build.VERSION.RELEASE
 
     @JvmStatic
     val buildDateTimestamp: Long
@@ -60,7 +65,10 @@ object DeviceInfoUtils : SettingsLibDeviceInfoUtils() {
         set(value) = SystemProperties.set(PROP_UPDATE_RECOVERY, value.toString())
 
     @JvmStatic
+    val buildSecurityPatch: String
+        get() = Build.VERSION.SECURITY_PATCH
+
+    @JvmStatic
     val updaterUri: String
         get() = SystemProperties.get(PROP_UPDATER_URI, "")
 }
-

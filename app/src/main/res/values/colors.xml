@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <!-- Branding colors for UpdaterBanner -->
+
+    <!-- Base background of the header card. Official Lineage teal. -->
+    <color name="brand_color">#167C80</color>
+
+    <!-- Content color on the header (text, icons, mark). Always white on teal. -->
+    <color name="on_brand_color">#FFFFFF</color>
+
+    <!--
+         Sheen gradient color — exact value from Figma inspect panel: #EADDFF.
+         This is a fixed design constant, not a Material theme token. Do not replace
+         with colorScheme.primaryContainer — that resolves differently per device theme.
+    -->
+    <color name="brand_sheen_color">#EADDFF</color>
+</resources>
