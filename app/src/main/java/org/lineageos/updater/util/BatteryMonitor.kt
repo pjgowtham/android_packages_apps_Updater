@@ -11,11 +11,14 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
 import android.os.UpdateEngine
-import androidx.preference.PreferenceManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import org.lineageos.updater.misc.Constants
+import kotlinx.coroutines.launch
+import org.lineageos.updater.data.UserPreferencesRepository
 
 data class BatteryState(
     val level: Int,
@@ -73,7 +76,9 @@ class BatteryMonitor private constructor(context: Context) {
         }
     }
 
-    private val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    @Volatile
+    private var abPerfMode: Boolean = false
 
     private val _batteryState = MutableStateFlow(
         context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
@@ -99,7 +104,7 @@ class BatteryMonitor private constructor(context: Context) {
             if (state.isAcCharging != prev.isAcCharging) {
                 try {
                     updateEngine?.setPerformanceMode(
-                        state.isAcCharging || prefs.getBoolean(Constants.PREF_AB_PERF_MODE, false)
+                        state.isAcCharging || abPerfMode
                     )
                 } catch (_: Throwable) {
                     // Ignored
@@ -110,5 +115,17 @@ class BatteryMonitor private constructor(context: Context) {
 
     init {
         context.registerReceiver(receiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        scope.launch {
+            UserPreferencesRepository(context).abPerfModeFlow.collect {
+                abPerfMode = it
+                try {
+                    updateEngine?.setPerformanceMode(
+                        batteryState.value.isAcCharging || abPerfMode
+                    )
+                } catch (_: Throwable) {
+                    // Ignored
+                }
+            }
+        }
     }
 }
