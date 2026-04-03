@@ -7,7 +7,6 @@ package org.lineageos.updater
 
 import android.content.Intent
 import android.os.Bundle
-import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -26,15 +25,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import com.android.settingslib.spa.framework.compose.LocalNavController
 import com.android.settingslib.spa.framework.compose.NavControllerWrapper
 import com.android.settingslib.spa.framework.theme.SettingsTheme
@@ -43,24 +41,26 @@ import com.android.settingslib.spa.widget.preference.PreferenceModel
 import com.android.settingslib.spa.widget.scaffold.SettingsScaffold
 import com.android.settingslib.spa.widget.ui.Category
 import com.android.settingslib.spa.widget.ui.LinearLoadingBar
+import org.lineageos.updater.controller.UpdaterController
+import org.lineageos.updater.data.UserPreferencesRepository
+import org.lineageos.updater.data.Update
 import org.lineageos.updater.deviceinfo.DeviceInfoBanner
 import org.lineageos.updater.data.UpdateStatus
 import org.lineageos.updater.preferences.PreferencesActivity
+import org.lineageos.updater.updates.UpdateList
 import org.lineageos.updater.updatescheck.UpdatesCheck
+import org.lineageos.updater.util.BatteryMonitor
 import org.lineageos.updater.util.NetworkMonitor
 
 abstract class UpdatesScaffoldActivity : ComponentActivity() {
 
-    private var legacyView: View? = null
     private val viewModel: UpdatesViewModel by viewModels { UpdatesViewModel.factory(application) }
+    private val updaterControllerState = mutableStateOf<UpdaterController?>(null)
+    private val progressRevisionState = mutableIntStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-    }
-
-    override fun setContentView(layoutResID: Int) {
-        val capturedView = layoutInflater.inflate(layoutResID, null).also { legacyView = it }
 
         setContent {
             val navController = remember {
@@ -74,6 +74,10 @@ abstract class UpdatesScaffoldActivity : ComponentActivity() {
                     val uiState by viewModel.uiState.collectAsState()
                     val networkState by NetworkMonitor.getInstance(this@UpdatesScaffoldActivity)
                         .networkState.collectAsState()
+                    val batteryState by BatteryMonitor.getInstance(this@UpdatesScaffoldActivity)
+                        .batteryState.collectAsState()
+                    val meteredWarning by UserPreferencesRepository(this@UpdatesScaffoldActivity)
+                        .meteredNetworkWarningFlow.collectAsState(initial = true)
                     val updates = uiState.updates
                     val titleText = when {
                         updates.any { it.status == UpdateStatus.UPDATED_NEED_REBOOT } ->
@@ -98,19 +102,7 @@ abstract class UpdatesScaffoldActivity : ComponentActivity() {
                     val preferencesSummary =
                         stringResource(R.string.preferences_summary)
 
-                    val contentPane: @Composable () -> Unit = {
-                        UpdatesCheck(
-                            isRefreshing = uiState.isCheckingForUpdates,
-                            isNetworkAvailable = networkState.isOnline,
-                            lastCheckTimestamp = uiState.lastCheckedTimestamp,
-                            onCheckClick = viewModel::fetchUpdates,
-                        )
-                        AndroidView(
-                            factory = { capturedView },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .nestedScroll(rememberNestedScrollInteropConnection()),
-                        )
+                    val footerPane: @Composable () -> Unit = {
                         Category {
                             Preference(object : PreferenceModel {
                                 override val title =
@@ -158,7 +150,22 @@ abstract class UpdatesScaffoldActivity : ComponentActivity() {
                                             .fillMaxHeight()
                                             .verticalScroll(rememberScrollState()),
                                     ) {
-                                        contentPane()
+                                        UpdatesCheck(
+                                            isRefreshing = uiState.isCheckingForUpdates,
+                                            isNetworkAvailable = networkState.isOnline,
+                                            lastCheckTimestamp = uiState.lastCheckedTimestamp,
+                                            onCheckClick = viewModel::fetchUpdates,
+                                        )
+                                        UpdateList(
+                                            updates = updates,
+                                            updaterController = updaterControllerState.value,
+                                            networkState = networkState,
+                                            batteryState = batteryState,
+                                            meteredWarning = meteredWarning,
+                                            onExportUpdate = ::onExportUpdate,
+                                            progressRevision = progressRevisionState.intValue,
+                                        )
+                                        footerPane()
                                         Spacer(Modifier.height(paddingValues.calculateBottomPadding()))
                                     }
                                 }
@@ -176,7 +183,22 @@ abstract class UpdatesScaffoldActivity : ComponentActivity() {
                             ) {
                                 LinearLoadingBar(isLoading = uiState.isCheckingForUpdates)
                                 DeviceInfoBanner()
-                                contentPane()
+                                UpdatesCheck(
+                                    isRefreshing = uiState.isCheckingForUpdates,
+                                    isNetworkAvailable = networkState.isOnline,
+                                    lastCheckTimestamp = uiState.lastCheckedTimestamp,
+                                    onCheckClick = viewModel::fetchUpdates,
+                                )
+                                UpdateList(
+                                    updates = updates,
+                                    updaterController = updaterControllerState.value,
+                                    networkState = networkState,
+                                    batteryState = batteryState,
+                                    meteredWarning = meteredWarning,
+                                    onExportUpdate = ::onExportUpdate,
+                                    progressRevision = progressRevisionState.intValue,
+                                )
+                                footerPane()
                             }
                         }
                     }
@@ -185,8 +207,15 @@ abstract class UpdatesScaffoldActivity : ComponentActivity() {
         }
     }
 
-    override fun <T : View> findViewById(id: Int): T? =
-        super.findViewById(id) ?: legacyView?.findViewById(id)
+    protected fun setUpdaterController(controller: UpdaterController?) {
+        updaterControllerState.value = controller
+    }
+
+    protected fun incrementProgressRevision() {
+        progressRevisionState.intValue++
+    }
+
+    open fun onExportUpdate(update: Update) {}
 
     open fun onLocalUpdateClick() {}
 }

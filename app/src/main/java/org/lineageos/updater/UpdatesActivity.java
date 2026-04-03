@@ -23,7 +23,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
-import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -33,15 +32,10 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.preference.PreferenceManager;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-import androidx.recyclerview.widget.SimpleItemAnimator;
 
 import org.lineageos.updater.controller.UpdaterController;
 import org.lineageos.updater.controller.UpdaterService;
 import org.lineageos.updater.data.Update;
-import org.lineageos.updater.misc.Constants;
 import org.lineageos.updater.misc.Utils;
 import java.util.ArrayList;
 import java.util.List;
@@ -52,7 +46,6 @@ public class UpdatesActivity extends UpdatesScaffoldActivity implements UpdateIm
     private UpdaterService mUpdaterService;
     private BroadcastReceiver mBroadcastReceiver;
 
-    private UpdatesListAdapter mAdapter;
     private UpdatesViewModel mViewModel;
 
     private Update mToBeExported = null;
@@ -74,19 +67,8 @@ public class UpdatesActivity extends UpdatesScaffoldActivity implements UpdateIm
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_updates);
 
         mUpdateImporter = new UpdateImporter(this, this);
-
-        RecyclerView recyclerView = findViewById(R.id.recycler_view);
-        mAdapter = new UpdatesListAdapter(this, this::exportUpdate);
-        recyclerView.setAdapter(mAdapter);
-        RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this);
-        recyclerView.setLayoutManager(layoutManager);
-        RecyclerView.ItemAnimator animator = recyclerView.getItemAnimator();
-        if (animator instanceof SimpleItemAnimator) {
-            ((SimpleItemAnimator) animator).setSupportsChangeAnimations(false);
-        }
 
         mBroadcastReceiver = new BroadcastReceiver() {
             @Override
@@ -94,14 +76,12 @@ public class UpdatesActivity extends UpdatesScaffoldActivity implements UpdateIm
                 if (UpdaterController.ACTION_UPDATE_STATUS.equals(intent.getAction())) {
                     String downloadId = intent.getStringExtra(UpdaterController.EXTRA_DOWNLOAD_ID);
                     handleDownloadStatusChange(downloadId);
-                    mAdapter.notifyItemChanged(downloadId);
+                    incrementProgressRevision();
                 } else if (UpdaterController.ACTION_DOWNLOAD_PROGRESS.equals(intent.getAction()) ||
                         UpdaterController.ACTION_INSTALL_PROGRESS.equals(intent.getAction())) {
-                    String downloadId = intent.getStringExtra(UpdaterController.EXTRA_DOWNLOAD_ID);
-                    mAdapter.notifyItemChanged(downloadId);
+                    incrementProgressRevision();
                 } else if (UpdaterController.ACTION_UPDATE_REMOVED.equals(intent.getAction())) {
-                    String downloadId = intent.getStringExtra(UpdaterController.EXTRA_DOWNLOAD_ID);
-                    mAdapter.removeItem(downloadId);
+                    incrementProgressRevision();
                 }
             }
         };
@@ -199,8 +179,6 @@ public class UpdatesActivity extends UpdatesScaffoldActivity implements UpdateIm
             return;
         }
 
-        mAdapter.notifyDataSetChanged();
-
         final Runnable deleteUpdate = () -> UpdaterController.getInstance(this)
                 .deleteUpdate(update.getDownloadId());
 
@@ -208,7 +186,6 @@ public class UpdatesActivity extends UpdatesScaffoldActivity implements UpdateIm
                 .setTitle(R.string.local_update_import)
                 .setMessage(getString(R.string.local_update_import_success, update.getVersion()))
                 .setPositiveButton(R.string.local_update_import_install, (dialog, which) -> {
-                    mAdapter.addItem(update.getDownloadId());
                     refreshUpdatesList(
                             Objects.requireNonNull(mViewModel.getUiState().getValue()).getUpdates());
                     Utils.triggerUpdate(this, update.getDownloadId());
@@ -224,16 +201,16 @@ public class UpdatesActivity extends UpdatesScaffoldActivity implements UpdateIm
                 IBinder service) {
             UpdaterService.LocalBinder binder = (UpdaterService.LocalBinder) service;
             mUpdaterService = binder.getService();
-            mAdapter.setUpdaterController(mUpdaterService.getUpdaterController());
+            setUpdaterController(mUpdaterService.getUpdaterController());
             refreshUpdatesList(
                     Objects.requireNonNull(mViewModel.getUiState().getValue()).getUpdates());
         }
 
         @Override
         public void onServiceDisconnected(ComponentName componentName) {
-            mAdapter.setUpdaterController(null);
+            setUpdaterController(null);
             mUpdaterService = null;
-            mAdapter.notifyDataSetChanged();
+            incrementProgressRevision();
         }
     };
 
@@ -245,8 +222,6 @@ public class UpdatesActivity extends UpdatesScaffoldActivity implements UpdateIm
             updateIds.add(update.getDownloadId());
         }
         controller.setUpdatesAvailableOnline(updateIds, true);
-        mAdapter.setData(updateIds);
-        mAdapter.notifyDataSetChanged();
     }
 
     private void handleDownloadStatusChange(String downloadId) {
@@ -268,7 +243,8 @@ public class UpdatesActivity extends UpdatesScaffoldActivity implements UpdateIm
         }
     }
 
-    public void exportUpdate(Update update) {
+    @Override
+    public void onExportUpdate(Update update) {
         mToBeExported = update;
 
         Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
