@@ -27,7 +27,6 @@ import org.lineageos.updater.R
 import org.lineageos.updater.data.CheckInterval
 import org.lineageos.updater.data.UserPreferencesRepository
 import org.lineageos.updater.deviceinfo.DeviceInfoUtils
-import org.lineageos.updater.misc.Utils
 import org.lineageos.updater.util.BatteryMonitor
 
 @Composable
@@ -36,7 +35,7 @@ fun PreferencesScreen() {
     val repository = remember(context) { UserPreferencesRepository(context) }
     val batteryMonitor = remember(context) { BatteryMonitor.getInstance(context) }
     val isABDevice = remember { DeviceInfoUtils.isABDevice }
-    val showRecoveryUpdate = remember { Utils.isRecoveryUpdateExecPresent() }
+    val showRecoveryUpdate = remember { java.io.File("/vendor/bin/install-recovery.sh").exists() }
     RegularScaffold(title = stringResource(R.string.display_name)) {
         PreferencesContent(repository, batteryMonitor, isABDevice, showRecoveryUpdate)
     }
