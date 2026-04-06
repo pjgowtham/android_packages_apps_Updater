@@ -68,6 +68,13 @@ enum class UpdateStatus(val persistentStatus: Int) {
             else -> false
         }
 
+    fun isInstalling() = when (this) {
+        INSTALLING,
+        INSTALLATION_SUSPENDED,
+        UPDATED_NEED_REBOOT -> true
+        else -> false
+    }
+
     companion object {
         @JvmStatic
         fun fromPersistentStatus(status: Int) = when (status) {
