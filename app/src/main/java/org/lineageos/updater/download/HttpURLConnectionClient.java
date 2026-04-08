@@ -25,12 +25,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.PriorityQueue;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class HttpURLConnectionClient implements DownloadClient {
 
@@ -116,15 +112,15 @@ public class HttpURLConnectionClient implements DownloadClient {
     }
 
     private static boolean isSuccessCode(int statusCode) {
-        return (statusCode / 100) == 2;
+        return DownloadUtils.isSuccessCode(statusCode);
     }
 
     private static boolean isRedirectCode(int statusCode) {
-        return (statusCode / 100) == 3;
+        return DownloadUtils.isRedirectCode(statusCode);
     }
 
     private static boolean isPartialContentCode(int statusCode) {
-        return statusCode == 206;
+        return DownloadUtils.isPartialContentCode(statusCode);
     }
 
     private class DownloadThread extends Thread {
@@ -175,29 +171,11 @@ public class HttpURLConnectionClient implements DownloadClient {
 
         // Ref: mozilla-central DownloadsCommon.sys.mjs smoothSeconds()
         private void calculateEta() {
-            if (mSpeed <= 0) return;
-
-            double rawSeconds = (double) (mTotalBytes - mTotalBytesRead) / mSpeed;
-
-            // Apply smoothing only when the new value is more than half the previous;
-            // large drops (e.g. after resume) are accepted immediately.
-            if (mLastEta >= 0 && rawSeconds > mLastEta / 2) {
-                double diff = rawSeconds - mLastEta;
-                // Asymmetric: trust 30% of a decrease, only 10% of an increase.
-                rawSeconds = mLastEta + (diff < 0 ? 0.3 : 0.1) * diff;
-
-                // If the change is tiny (< 5 s or < 5%), nudge by a small amount
-                // so the display shows forward progress rather than freezing.
-                diff = rawSeconds - mLastEta;
-                double diffPct = (diff / mLastEta) * 100;
-                if (Math.abs(diff) < 5 || Math.abs(diffPct) < 5) {
-                    rawSeconds = mLastEta - (diff < 0 ? 0.4 : 0.2);
-                }
+            double smoothed = DownloadUtils.calculateEta(mTotalBytes, mTotalBytesRead, mSpeed, mLastEta);
+            if (smoothed > 0) {
+                mLastEta = smoothed;
+                mEta = (long) smoothed;
             }
-
-            // Never show zero seconds while still downloading.
-            mLastEta = Math.max(rawSeconds, 1.0);
-            mEta = (long) mLastEta;
         }
 
         private void changeClientUrl(URL newUrl) throws IOException {
@@ -211,41 +189,9 @@ public class HttpURLConnectionClient implements DownloadClient {
 
         private void handleDuplicateLinks() throws IOException {
             String protocol = mClient.getURL().getProtocol();
-
-            class DuplicateLink {
-                private final String mUrl;
-                private final int mPriority;
-                private DuplicateLink(String url, int priority) {
-                    mUrl = url;
-                    mPriority = priority;
-                }
-            }
-
-            PriorityQueue<DuplicateLink> duplicates = null;
-
-            for (Map.Entry<String, List<String>> entry : mClient.getHeaderFields().entrySet()) {
-                if ("Link".equalsIgnoreCase((entry.getKey()))) {
-                    duplicates = new PriorityQueue<>(entry.getValue().size(),
-                            Comparator.comparingInt(d -> d.mPriority));
-
-                    // https://tools.ietf.org/html/rfc6249
-                    // https://tools.ietf.org/html/rfc5988#section-5
-                    String regex = "(?i)<([^>]+)>\\s*;\\s*rel=duplicate(?:.*pri=([0-9]+).*|.*)?";
-                    Pattern pattern = Pattern.compile(regex);
-                    for (String field : entry.getValue()) {
-                        Matcher matcher = pattern.matcher(field);
-                        if (matcher.matches()) {
-                            String url = matcher.group(1);
-                            String pri = matcher.group(2);
-                            int priority = pri != null ? Integer.parseInt(pri) : 999999;
-                            duplicates.add(new DuplicateLink(url, priority));
-                            Log.d(TAG, "Adding duplicate link " + url);
-                        } else {
-                            Log.d(TAG, "Ignoring link " + field);
-                        }
-                    }
-                }
-            }
+            List<DuplicateLink> duplicates =
+                    DownloadUtils.parseDuplicateLinks(mClient.getHeaderFields());
+            int duplicateIndex = 0;
 
             String newUrl = mClient.getHeaderField("Location");
             for (;;) {
@@ -265,13 +211,10 @@ public class HttpURLConnectionClient implements DownloadClient {
                     }
                     return;
                 } catch (IOException e) {
-                    if (duplicates != null && !duplicates.isEmpty()) {
-                        DuplicateLink link = duplicates.poll();
-                        if (link != null) {
-                            duplicates.remove(link);
-                            newUrl = link.mUrl;
-                            Log.e(TAG, "Using duplicate link " + link.mUrl, e);
-                        }
+                    if (duplicateIndex < duplicates.size()) {
+                        DuplicateLink link = duplicates.get(duplicateIndex++);
+                        newUrl = link.getUrl();
+                        Log.e(TAG, "Using duplicate link " + link.getUrl(), e);
                     } else {
                         throw e;
                     }
