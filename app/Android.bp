@@ -83,6 +83,7 @@ android_app {
         "Updater_io.ktor_ktor-client-content-negotiation",
         "Updater_io.ktor_ktor-client-core",
         "Updater_io.ktor_ktor-serialization-kotlinx-json",
+        "Updater_org.apache.commons_commons-compress",
         "kotlin-stdlib",
     ],
 

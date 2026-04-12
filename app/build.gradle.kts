@@ -116,6 +116,7 @@ dependencies {
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.apache.commons.compress)
     implementation(libs.ktor.client.android)
     implementation(libs.ktor.client.content.negotiation)
     implementation(libs.ktor.client.core)
@@ -139,6 +140,7 @@ configure<GenerateBpPluginExtension> {
             module.group == "com.google.errorprone" -> true
             module.group == "com.google.guava" -> true
             module.group == "junit" -> true
+            module.group.startsWith("org.apache") && module.name.startsWith("commons-compress") -> false
             else -> false
         }
     }
