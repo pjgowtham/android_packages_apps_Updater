@@ -28,8 +28,9 @@ import androidx.preference.PreferenceManager;
 import org.lineageos.updater.data.Update;
 import org.lineageos.updater.data.UpdateStatus;
 import org.lineageos.updater.data.UserPreferencesRepository;
+import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
+import org.apache.commons.compress.archivers.zip.ZipFile;
 import org.lineageos.updater.misc.Constants;
-import org.lineageos.updater.misc.Utils;
 import org.lineageos.updater.util.BatteryMonitor;
 
 import java.io.BufferedReader;
@@ -39,8 +40,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
 
 class ABUpdateInstaller {
 
@@ -199,10 +198,10 @@ class ABUpdateInstaller {
 
         long offset;
         String[] headerKeyValuePairs;
-        try {
-            ZipFile zipFile = new ZipFile(file);
-            offset = Utils.getZipEntryOffset(zipFile, Constants.AB_PAYLOAD_BIN_PATH);
-            ZipEntry payloadPropEntry = zipFile.getEntry(Constants.AB_PAYLOAD_PROPERTIES_PATH);
+        try (ZipFile zipFile = ZipFile.builder().setFile(file).get()) {
+            offset = zipFile.getEntry(Constants.AB_PAYLOAD_BIN_PATH).getDataOffset();
+            ZipArchiveEntry payloadPropEntry =
+                    zipFile.getEntry(Constants.AB_PAYLOAD_PROPERTIES_PATH);
             try (InputStream is = zipFile.getInputStream(payloadPropEntry);
                  InputStreamReader isr = new InputStreamReader(is);
                  BufferedReader br = new BufferedReader(isr)) {
@@ -210,10 +209,8 @@ class ABUpdateInstaller {
                 for (String line; (line = br.readLine()) != null;) {
                     lines.add(line);
                 }
-                headerKeyValuePairs = new String[lines.size()];
-                headerKeyValuePairs = lines.toArray(headerKeyValuePairs);
+                headerKeyValuePairs = lines.toArray(new String[0]);
             }
-            zipFile.close();
         } catch (IOException | IllegalArgumentException e) {
             Log.e(TAG, "Could not prepare " + file, e);
             Update update = mUpdaterController.getUpdate(downloadId);
