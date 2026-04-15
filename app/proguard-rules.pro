@@ -26,3 +26,7 @@
 # SettingsLib transitively bundles android.app.admin.flags classes that are
 # also provided by the platform framework; suppress the duplicate-class warnings.
 -dontwarn android.app.admin.flags.**
+
+# Ignore missing optional dependencies from apache commons-compress
+-dontwarn org.tukaani.xz.**
+-dontwarn com.github.luben.zstd.**
