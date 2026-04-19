@@ -23,7 +23,11 @@ object FileUtils {
     @Throws(IOException::class)
     fun copyFile(sourceFile: File, destFile: File) {
         try {
-            OsFileUtils.copy(sourceFile, destFile)
+            FileInputStream(sourceFile).use { input ->
+                FileOutputStream(destFile).use { output ->
+                    OsFileUtils.copy(input, output)
+                }
+            }
         } catch (e: IOException) {
             Log.e(TAG, "Could not copy file", e)
             if (destFile.exists()) {

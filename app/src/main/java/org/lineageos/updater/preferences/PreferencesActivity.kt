@@ -14,12 +14,10 @@ import androidx.compose.runtime.remember
 import com.android.settingslib.spa.framework.compose.LocalNavController
 import com.android.settingslib.spa.framework.compose.NavControllerWrapper
 import com.android.settingslib.spa.framework.theme.SettingsTheme
-import org.lineageos.updater.R
 
 class PreferencesActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        setTheme(R.style.Theme_SpaLib)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
