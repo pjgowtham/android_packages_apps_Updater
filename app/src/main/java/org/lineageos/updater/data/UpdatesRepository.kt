@@ -44,8 +44,6 @@ class UpdatesRepository(
             networkDataSource.fetchUpdates().map { it.toUpdate() }.filter { filterUpdates(it) }
         }
 
-        if (networkUpdates.isEmpty()) return System.currentTimeMillis()
-
         val networkIds = networkUpdates.map { it.downloadId }.toSet()
 
         val localUpdates = withContext(Dispatchers.IO) {
