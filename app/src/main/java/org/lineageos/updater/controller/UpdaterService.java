@@ -109,10 +109,7 @@ public class UpdaterService extends Service {
                     if (!isLocalUpdate && downloadId != null && downloadId.equals(
                             extras.getString(UpdaterController.EXTRA_DOWNLOAD_ID))) {
                         mNotificationBuilder.setExtras(null);
-                        Update update = mUpdaterController.getUpdate(downloadId);
-                        if (update.getStatus() != UpdateStatus.UPDATED_NEED_REBOOT) {
-                            mNotificationManager.cancel(NOTIFICATION_ID);
-                        }
+                        mNotificationManager.cancel(NOTIFICATION_ID);
                     }
                 }
             }
