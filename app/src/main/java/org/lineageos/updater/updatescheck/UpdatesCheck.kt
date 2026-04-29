@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.res.Configuration
 import android.text.format.DateFormat
 import android.text.format.DateUtils
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -49,17 +50,23 @@ fun UpdatesCheck(
     isNetworkAvailable: Boolean,
     lastCheckTimestamp: Long,
     onCheckClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val isPreview = LocalInspectionMode.current
 
-    Column {
+    Column(
+        modifier = modifier.padding(
+            start = SettingsDimension.itemPaddingStart,
+            end = SettingsDimension.itemPaddingEnd,
+            bottom = SettingsDimension.itemPaddingVertical,
+        ),
+        verticalArrangement = Arrangement.spacedBy(SettingsDimension.itemPaddingVertical),
+    ) {
         OutlinedButton(
             onClick = onCheckClick,
             enabled = !isRefreshing && isNetworkAvailable,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(SettingsDimension.itemPadding),
+            modifier = Modifier.fillMaxWidth(),
         ) {
             Text(text = stringResource(R.string.check_for_updates))
         }
@@ -74,7 +81,6 @@ fun UpdatesCheck(
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(SettingsDimension.itemPadding)
                     .padding(end = SettingsDimension.itemPaddingEnd),
                 textAlign = TextAlign.End,
             )
