@@ -47,17 +47,13 @@ class UpdateItemStateMapper(
                 eta = "",
             )
 
-            state.isVerifying ||
-                    state.phase == UpdateOperationPhase.FINALIZING
-                -> ProgressState.Indeterminate
+            state.isVerifying || state.isFinalizing -> ProgressState.Indeterminate
 
             state.isInstalling -> ProgressState.Determinate(
                 percent = update.installProgress.toFloat(),
                 downloadedSize = "",
                 eta = "",
             )
-
-            state.isFinalizing -> ProgressState.Indeterminate
 
             else -> null
         }

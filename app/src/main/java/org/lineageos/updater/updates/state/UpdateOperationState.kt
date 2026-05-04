@@ -50,8 +50,14 @@ data class UpdateOperationState(
         get() = phase == UpdateOperationPhase.VERIFYING
 
     val isInstalling: Boolean
-        get() =
-            phase in UpdateOperationPhase.INSTALLING_RECOVERY..UpdateOperationPhase.INSTALLATION_SUSPENDED
+        get() = when (phase) {
+            UpdateOperationPhase.INSTALLING_RECOVERY,
+            UpdateOperationPhase.INSTALLING,
+            UpdateOperationPhase.FINALIZING,
+            UpdateOperationPhase.INSTALLATION_SUSPENDED -> true
+
+            else -> false
+        }
 
     val isFinalizing: Boolean
         get() = phase == UpdateOperationPhase.FINALIZING

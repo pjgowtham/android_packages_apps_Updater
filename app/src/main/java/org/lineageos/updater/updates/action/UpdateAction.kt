@@ -26,14 +26,11 @@ enum class UpdateActionType(@param:StringRes val titleRes: Int) {
     DELETE(R.string.menu_delete_update),
     EXPORT(R.string.menu_export_update),
     VIEW_DOWNLOADS(R.string.menu_view_downloads) {
-        override fun title(context: Context): String {
-            return context.getString(titleRes, context.getString(R.string.brand_name))
-        }
+        override fun title(context: Context) =
+            context.getString(titleRes, context.getString(R.string.brand_name))
     };
 
-    open fun title(context: Context): String {
-        return context.getString(titleRes)
-    }
+    open fun title(context: Context) = context.getString(titleRes)
 }
 
 data class UpdateAction(

@@ -7,7 +7,6 @@ package org.lineageos.updater
 
 import android.content.Intent
 import android.os.Bundle
-import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -26,32 +25,41 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import com.android.settingslib.spa.framework.compose.LocalNavController
 import com.android.settingslib.spa.framework.compose.NavControllerWrapper
+import com.android.settingslib.spa.framework.theme.SettingsDimension
 import com.android.settingslib.spa.framework.theme.SettingsTheme
 import com.android.settingslib.spa.widget.preference.Preference
 import com.android.settingslib.spa.widget.preference.PreferenceModel
 import com.android.settingslib.spa.widget.scaffold.SettingsScaffold
 import com.android.settingslib.spa.widget.ui.Category
 import com.android.settingslib.spa.widget.ui.LinearLoadingBar
-import org.lineageos.updater.deviceinfo.DeviceInfoBanner
+import org.lineageos.updater.controller.UpdaterController
+import org.lineageos.updater.data.Update
 import org.lineageos.updater.data.UpdateStatus
+import org.lineageos.updater.deviceinfo.DeviceInfoBanner
 import org.lineageos.updater.preferences.PreferencesActivity
+import org.lineageos.updater.updates.UpdateList
+import org.lineageos.updater.updates.action.UpdateActionDialog
+import org.lineageos.updater.updates.action.AlertDialogState
+import org.lineageos.updater.updates.action.UpdateActionHandler
+import org.lineageos.updater.updates.state.UpdateItemStateMapper
 import org.lineageos.updater.updatescheck.UpdatesCheck
 import org.lineageos.updater.util.NetworkMonitor
 
 abstract class UpdatesScaffoldActivity : ComponentActivity() {
 
-    private var legacyView: View? = null
+    protected var updaterController: UpdaterController? by mutableStateOf(null)
+    protected var controllerStateVersion: Int by mutableStateOf(0)
+
     private val viewModel: UpdatesViewModel by viewModels { UpdatesViewModel.factory(application) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -59,9 +67,7 @@ abstract class UpdatesScaffoldActivity : ComponentActivity() {
         enableEdgeToEdge()
     }
 
-    override fun setContentView(layoutResID: Int) {
-        val capturedView = layoutInflater.inflate(layoutResID, null).also { legacyView = it }
-
+    protected fun setupCompose() {
         setContent {
             val navController = remember {
                 object : NavControllerWrapper {
@@ -97,19 +103,60 @@ abstract class UpdatesScaffoldActivity : ComponentActivity() {
                         stringResource(R.string.local_update_import_summary)
                     val preferencesSummary =
                         stringResource(R.string.preferences_summary)
+                    var actionDialog by remember {
+                        mutableStateOf<AlertDialogState?>(null)
+                    }
 
                     val contentPane: @Composable () -> Unit = {
+                        val updateItems = remember(
+                            updates,
+                            updaterController,
+                            networkState.isOnline,
+                            controllerStateVersion,
+                        ) {
+                            val controller = updaterController ?: return@remember emptyList()
+                            val mapper = UpdateItemStateMapper(
+                                this@UpdatesScaffoldActivity,
+                                controller,
+                            )
+                            updates.map { update ->
+                                val freshUpdate = checkNotNull(
+                                    controller.getUpdate(update.downloadId)
+                                ) {
+                                    "Controller missing update ${update.downloadId}"
+                                }
+                                mapper.map(freshUpdate, networkState)
+                            }
+                        }
+
+                        val updatesCheckModifier = if (isWideScreen) {
+                            Modifier.padding(top = SettingsDimension.itemPaddingVertical)
+                        } else {
+                            Modifier
+                        }
                         UpdatesCheck(
                             isRefreshing = uiState.isCheckingForUpdates,
                             isNetworkAvailable = networkState.isOnline,
                             lastCheckTimestamp = uiState.lastCheckedTimestamp,
-                            onCheckClick = viewModel::fetchUpdates,
+                            onCheckClick = { viewModel.fetchUpdates() },
+                            modifier = updatesCheckModifier,
                         )
-                        AndroidView(
-                            factory = { capturedView },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .nestedScroll(rememberNestedScrollInteropConnection()),
+                        UpdateList(
+                            items = updateItems,
+                            onAction = onAction@{ action, downloadId ->
+                                val controller = checkNotNull(updaterController) {
+                                    "Update action received before updater controller was bound"
+                                }
+                                val update = checkNotNull(controller.getUpdate(downloadId)) {
+                                    "Controller missing update $downloadId"
+                                }
+                                UpdateActionHandler(
+                                    activity = this@UpdatesScaffoldActivity,
+                                    updaterController = controller,
+                                    exportUpdate = ::exportUpdate,
+                                    showDialog = { actionDialog = it },
+                                ).perform(action, update)
+                            },
                         )
                         Category {
                             Preference(object : PreferenceModel {
@@ -131,6 +178,13 @@ abstract class UpdatesScaffoldActivity : ComponentActivity() {
                                 }
                             })
                         }
+                    }
+
+                    actionDialog?.let { dialog ->
+                        UpdateActionDialog(
+                            dialog = dialog,
+                            onDismiss = { actionDialog = null },
+                        )
                     }
 
                     if (isWideScreen) {
@@ -185,8 +239,11 @@ abstract class UpdatesScaffoldActivity : ComponentActivity() {
         }
     }
 
-    override fun <T : View> findViewById(id: Int): T? =
-        super.findViewById(id) ?: legacyView?.findViewById(id)
-
     open fun onLocalUpdateClick() {}
+
+    open fun exportUpdate(update: Update) {}
+
+    protected fun notifyControllerStateChanged() {
+        controllerStateVersion++
+    }
 }
