@@ -325,6 +325,12 @@ public class UpdaterController {
         return addUpdate(update, true);
     }
 
+    public void addLocalUpdate(Update update) {
+        Update localUpdate = update.withAvailableOnline(false);
+        mDownloads.put(localUpdate.getDownloadId(), new DownloadEntry(localUpdate));
+        mUpdatesLocalDataSource.addUpdate(localUpdate);
+    }
+
     public boolean addUpdate(final Update updateInfo, boolean availableOnline) {
         Log.d(TAG, "Adding download: " + updateInfo.getDownloadId());
         if (mDownloads.containsKey(updateInfo.getDownloadId())) {
@@ -499,8 +505,7 @@ public class UpdaterController {
             }
             deleteUpdateAsync(update);
 
-            final boolean isLocalUpdate = Update.LOCAL_ID.equals(downloadId);
-            if (!isLocalUpdate && !update.isAvailableOnline()) {
+            if (!update.isAvailableOnline()) {
                 Log.d(TAG, "Download no longer available online, removing");
                 mDownloads.remove(downloadId);
                 notifyUpdateDelete(downloadId);
@@ -533,8 +538,7 @@ public class UpdaterController {
         }
         deleteUpdateAsync(update);
 
-        final boolean isLocalUpdate = Update.LOCAL_ID.equals(downloadId);
-        if (!isLocalUpdate && !update.isAvailableOnline()) {
+        if (!update.isAvailableOnline()) {
             Log.d(TAG, "Download no longer available online, removing");
             mDownloads.remove(downloadId);
             notifyUpdateDelete(downloadId);
