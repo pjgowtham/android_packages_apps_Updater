@@ -90,6 +90,11 @@ class UpdateInstaller {
 
     private void installPackage(File update, String downloadId) {
         try {
+            if (Update.LOCAL_ID.equals(downloadId)) {
+                PreferenceManager.getDefaultSharedPreferences(mContext).edit()
+                        .putString(Constants.PREF_NEEDS_REBOOT_ID, downloadId)
+                        .apply();
+            }
             android.os.RecoverySystem.installPackage(mContext, update);
         } catch (IOException e) {
             Log.e(TAG, "Could not install update", e);
