@@ -21,10 +21,11 @@ import java.time.format.FormatStyle
 class UpdateItemStateMapper(
     private val context: Context,
     private val updaterController: UpdaterController,
+    private val streamInstallEnabled: Boolean,
 ) {
 
     fun map(update: Update, networkState: NetworkState): UpdateItemState {
-        val state = UpdateOperationState.from(updaterController, update)
+        val state = UpdateOperationState.from(updaterController, update, streamInstallEnabled)
 
         val progress = when {
             state.isDownloading -> {
@@ -122,6 +123,11 @@ class UpdateItemStateMapper(
                     action(
                         type = UpdateActionType.SHOW_INFO,
                         enabled = !state.isBusy,
+                    )
+                } else if (state.canStreamInstall) {
+                    action(
+                        type = UpdateActionType.START_INSTALL,
+                        enabled = networkState.isOnline && !state.isBusy,
                     )
                 } else {
                     action(

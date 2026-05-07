@@ -82,6 +82,8 @@
     <string name="pref_category_download_install">Download and installation</string>
     <string name="menu_auto_delete_updates">Auto-delete updates</string>
     <string name="menu_auto_delete_updates_summary">Remove downloaded updates after installation</string>
+    <string name="menu_stream_install">Stream updates</string>
+    <string name="menu_stream_install_summary">Install directly from the server without saving the update package first</string>
     <string name="menu_delete_update">Delete</string>
     <string name="menu_export_update">Export update</string>
     <string name="menu_show_changelog">Show changelog</string>

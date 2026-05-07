@@ -481,7 +481,7 @@ public class UpdaterController {
     private void deleteUpdateAsync(final Update update) {
         new Thread(() -> {
             File file = update.getFile();
-            if (file.exists() && !file.delete()) {
+            if (file != null && file.exists() && !file.delete()) {
                 Log.e(TAG, "Could not delete " + file.getAbsolutePath());
             }
             mUpdatesLocalDataSource.removeUpdate(update.getDownloadId());

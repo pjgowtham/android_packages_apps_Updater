@@ -57,11 +57,13 @@ private fun PreferencesContent(
         true
     )
     val periodicCheckEnabled by repository.periodicCheckEnabledFlow.collectAsStateWithLifecycle(true)
+    val streamInstall by repository.streamInstallFlow.collectAsStateWithLifecycle(true)
     var recoveryUpdateEnabled by remember { mutableStateOf(repository.getRecoveryUpdateEnabled()) }
 
     val autoUpdatesCheckSummary = stringResource(R.string.menu_auto_updates_check_summary)
     val autoDeleteUpdatesSummary = stringResource(R.string.menu_auto_delete_updates_summary)
     val meteredNetworkWarningSummary = stringResource(R.string.menu_metered_network_warning_summary)
+    val streamInstallSummary = stringResource(R.string.menu_stream_install_summary)
     val abPerfModeSummary = stringResource(R.string.menu_ab_perf_mode_summary)
     val abPerfModeChargingSummary = stringResource(R.string.menu_ab_perf_mode_summary_charging)
     val updateRecoverySummary = stringResource(R.string.menu_update_recovery_summary)
@@ -107,6 +109,17 @@ private fun PreferencesContent(
     }
 
     Category(title = stringResource(R.string.pref_category_download_install)) {
+        if (isABDevice) {
+            SwitchPreference(object : SwitchPreferenceModel {
+                override val title = stringResource(R.string.menu_stream_install)
+                override val summary = { streamInstallSummary }
+                override val checked = { streamInstall }
+                override val onCheckedChange: (Boolean) -> Unit = { value ->
+                    coroutineScope.launch { repository.setStreamInstall(value) }
+                }
+            })
+        }
+
         SwitchPreference(object : SwitchPreferenceModel {
             override val title = stringResource(R.string.menu_auto_delete_updates)
             override val summary = { autoDeleteUpdatesSummary }

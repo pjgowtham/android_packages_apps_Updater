@@ -43,4 +43,15 @@ object InstallUtils {
 
     @JvmStatic
     fun canInstall(update: Update) = getBlockedReason(update) == BlockedReason.NONE
+
+    @JvmStatic
+    fun canStreamInstall(update: Update, streamInstallEnabled: Boolean): Boolean {
+        return canInstall(update) &&
+                DeviceInfoUtils.isABDevice &&
+                streamInstallEnabled &&
+                update.downloadId != Update.LOCAL_ID &&
+                update.downloadUrl != null &&
+                (update.file == null || !update.file.exists()) &&
+                update.status.persistentStatus == 0
+    }
 }

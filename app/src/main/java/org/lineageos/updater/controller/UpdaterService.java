@@ -28,6 +28,8 @@ import org.lineageos.updater.data.UserPreferencesRepository;
 import org.lineageos.updater.UpdatesActivity;
 import org.lineageos.updater.data.Update;
 import org.lineageos.updater.data.UpdateStatus;
+import org.lineageos.updater.deviceinfo.DeviceInfoUtils;
+import org.lineageos.updater.util.InstallUtils;
 import org.lineageos.updater.util.StringUtil;
 import org.lineageos.updater.misc.Utils;
 import org.lineageos.updater.notifications.NotificationHelper;
@@ -183,11 +185,16 @@ public class UpdaterService extends Service {
                 Log.e(TAG, "Update not found: " + downloadId);
                 return START_NOT_STICKY;
             }
-            if (update.getStatus() != UpdateStatus.VERIFIED) {
+            boolean streamInstall = shouldStreamInstall(update);
+            if (update.getStatus() != UpdateStatus.VERIFIED && !streamInstall) {
                 throw new IllegalArgumentException(update.getDownloadId() + " is not verified");
             }
             try {
-                if (Utils.isABUpdate(update.getFile())) {
+                if (streamInstall) {
+                    ABUpdateInstaller installer = ABUpdateInstaller.getInstance(this,
+                            mUpdaterController);
+                    installer.installStreaming(downloadId);
+                } else if (Utils.isABUpdate(update.getFile())) {
                     ABUpdateInstaller installer = ABUpdateInstaller.getInstance(this,
                             mUpdaterController);
                     installer.install(downloadId);
@@ -229,6 +236,11 @@ public class UpdaterService extends Service {
             }
         }
         return ABUpdateInstaller.isInstallingUpdate(this) ? START_STICKY : START_NOT_STICKY;
+    }
+
+    private boolean shouldStreamInstall(Update update) {
+        return InstallUtils.canStreamInstall(update,
+                UserPreferencesRepository.getStreamInstallBlocking(this));
     }
 
     public UpdaterController getUpdaterController() {
@@ -552,7 +564,9 @@ public class UpdaterService extends Service {
 
         // Always delete local updates
         boolean isLocal = Update.LOCAL_ID.equals(downloadId);
-        if (deleteUpdate || isLocal) {
+        boolean isStreamedAbUpdate = DeviceInfoUtils.isABDevice() &&
+                (update.getFile() == null || !update.getFile().exists());
+        if (deleteUpdate || isLocal || isStreamedAbUpdate) {
             mUpdaterController.deleteUpdate(downloadId);
         }
     }

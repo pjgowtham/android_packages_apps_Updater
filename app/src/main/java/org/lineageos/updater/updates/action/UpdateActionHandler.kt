@@ -26,7 +26,6 @@ import org.lineageos.updater.util.BatteryState
 import org.lineageos.updater.util.InstallUtils
 import org.lineageos.updater.util.NetworkMonitor
 import org.lineageos.updater.util.StringUtil
-import org.lineageos.updater.util.currentLocale
 import java.time.format.FormatStyle
 
 class UpdateActionHandler(
@@ -100,37 +99,13 @@ class UpdateActionHandler(
                     return
                 }
 
-                val messageRes = if (DeviceInfoUtils.isABDevice) {
-                    R.string.apply_update_dialog_message_ab
+                if (isStreamInstall(update)) {
+                    runDownloadWithMeteredWarning {
+                        showInstallConfirmation(update)
+                    }
                 } else {
-                    R.string.apply_update_dialog_message
+                    showInstallConfirmation(update)
                 }
-                val buildDate = StringUtil.getDateLocalizedUTC(
-                    activity,
-                    FormatStyle.MEDIUM,
-                    update.timestamp,
-                )
-                val buildInfoText = activity.getString(
-                    R.string.list_build_version_date,
-                    update.version,
-                    buildDate,
-                )
-                showDialog(
-                    AlertDialogState(
-                        title = activity.getString(R.string.apply_update_dialog_title),
-                        text = AnnotatedString(
-                            activity.getString(
-                                messageRes,
-                                buildInfoText,
-                                activity.getString(android.R.string.ok),
-                            )
-                        ),
-                        onConfirm = {
-                            Utils.triggerUpdate(activity, update.downloadId)
-                        },
-                        showDismiss = true,
-                    )
-                )
             }
 
             UpdateActionType.PAUSE_INSTALL -> startInstallService(
@@ -166,7 +141,7 @@ class UpdateActionHandler(
                             DeviceInfoUtils.device
                         )
                         val messageString = String.format(
-                            activity.currentLocale,
+                            activity.resources.configuration.locales[0],
                             activity.getString(R.string.blocked_update_dialog_message),
                             url
                         )
@@ -246,6 +221,47 @@ class UpdateActionHandler(
             title = activity.getString(R.string.update_over_metered_network_title),
             message = activity.getString(R.string.update_over_metered_network_message),
             onConfirm = downloadAction,
+        )
+    }
+
+    private fun isStreamInstall(update: Update): Boolean {
+        return InstallUtils.canStreamInstall(
+            update,
+            UserPreferencesRepository.getStreamInstallBlocking(activity),
+        )
+    }
+
+    private fun showInstallConfirmation(update: Update) {
+        val messageRes = if (DeviceInfoUtils.isABDevice) {
+            R.string.apply_update_dialog_message_ab
+        } else {
+            R.string.apply_update_dialog_message
+        }
+        val buildDate = StringUtil.getDateLocalizedUTC(
+            activity,
+            FormatStyle.MEDIUM,
+            update.timestamp,
+        )
+        val buildInfoText = activity.getString(
+            R.string.list_build_version_date,
+            update.version,
+            buildDate,
+        )
+        showDialog(
+            AlertDialogState(
+                title = activity.getString(R.string.apply_update_dialog_title),
+                text = AnnotatedString(
+                    activity.getString(
+                        messageRes,
+                        buildInfoText,
+                        activity.getString(android.R.string.ok),
+                    )
+                ),
+                onConfirm = {
+                    Utils.triggerUpdate(activity, update.downloadId)
+                },
+                showDismiss = true,
+            )
         )
     }
 

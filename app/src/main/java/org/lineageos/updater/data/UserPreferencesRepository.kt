@@ -38,6 +38,7 @@ private object UserPreferencesKeys {
     val CHECK_INTERVAL = stringPreferencesKey("check_interval")
     val METERED_NETWORK_WARNING = booleanPreferencesKey("metered_network_warning")
     val PERIODIC_CHECK_ENABLED = booleanPreferencesKey("periodic_check_enabled")
+    val STREAM_INSTALL = booleanPreferencesKey("stream_install")
 }
 
 class UserPreferencesRepository(context: Context) {
@@ -66,6 +67,16 @@ class UserPreferencesRepository(context: Context) {
 
     suspend fun setAutoDelete(value: Boolean) {
         userPreferences.edit { it[UserPreferencesKeys.AUTO_DELETE] = value }
+    }
+
+    val streamInstallFlow: Flow<Boolean> = userPreferencesFlow.map { preferences ->
+        preferences[UserPreferencesKeys.STREAM_INSTALL] ?: true
+    }
+
+    suspend fun getStreamInstall(): Boolean = streamInstallFlow.first()
+
+    suspend fun setStreamInstall(value: Boolean) {
+        userPreferences.edit { it[UserPreferencesKeys.STREAM_INSTALL] = value }
     }
 
     val meteredNetworkWarningFlow: Flow<Boolean> = userPreferencesFlow.map { preferences ->
@@ -121,6 +132,11 @@ class UserPreferencesRepository(context: Context) {
         @JvmStatic
         fun getAutoDeleteBlocking(context: Context): Boolean = runBlocking {
             UserPreferencesRepository(context).autoDeleteFlow.first()
+        }
+
+        @JvmStatic
+        fun getStreamInstallBlocking(context: Context): Boolean = runBlocking {
+            UserPreferencesRepository(context).streamInstallFlow.first()
         }
 
         @JvmStatic

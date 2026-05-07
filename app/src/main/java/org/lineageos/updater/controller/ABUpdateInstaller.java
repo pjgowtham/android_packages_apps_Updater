@@ -28,18 +28,11 @@ import androidx.preference.PreferenceManager;
 import org.lineageos.updater.data.Update;
 import org.lineageos.updater.data.UpdateStatus;
 import org.lineageos.updater.data.UserPreferencesRepository;
-import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
-import org.apache.commons.compress.archivers.zip.ZipFile;
 import org.lineageos.updater.misc.Constants;
 import org.lineageos.updater.util.BatteryMonitor;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.List;
 
 class ABUpdateInstaller {
 
@@ -59,6 +52,7 @@ class ABUpdateInstaller {
 
     private boolean mFinalizing;
     private int mProgress;
+    private volatile boolean mCancelled;
 
     private final UpdateEngineCallback mUpdateEngineCallback = new UpdateEngineCallback() {
 
@@ -181,9 +175,60 @@ class ABUpdateInstaller {
         }
 
         mDownloadId = downloadId;
+        mCancelled = false;
 
         File file = mUpdaterController.getUpdate(mDownloadId).getFile();
         install(file, downloadId);
+    }
+
+    public void installStreaming(String downloadId) {
+        if (isInstallingUpdate(mContext)) {
+            Log.e(TAG, "Already installing an update");
+            return;
+        }
+
+        mDownloadId = downloadId;
+        mCancelled = false;
+        mProgress = 0;
+        mFinalizing = false;
+
+        Update update = mUpdaterController.getUpdate(mDownloadId);
+
+        mUpdaterController.setUpdate(downloadId, update.toBuilder()
+                .setInstallProgress(0)
+                .setFinalizing(false)
+                .setStatus(UpdateStatus.INSTALLING)
+                .build());
+        mUpdaterController.notifyUpdateChange(downloadId);
+
+        PreferenceManager.getDefaultSharedPreferences(mContext).edit()
+                .putString(PREF_INSTALLING_AB_ID, mDownloadId)
+                .apply();
+
+        new Thread(() -> {
+            try {
+                Payload payload = Payload.from(update.getDownloadUrl());
+                if (mCancelled) {
+                    return;
+                }
+                if (!bindUpdateEngine(downloadId)) {
+                    return;
+                }
+                applyPerformanceMode(UserPreferencesRepository.getAbPerfModeBlocking(mContext));
+                applyPayload(
+                        payload.url,
+                        payload.offset,
+                        payload.size,
+                        payload.headerKeyValuePairs,
+                        downloadId);
+            } catch (IOException | IllegalArgumentException | ServiceSpecificException e) {
+                if (mCancelled) {
+                    return;
+                }
+                Log.e(TAG, "Could not stream install " + update.getDownloadUrl(), e);
+                setInstallationFailed(downloadId);
+            }
+        }).start();
     }
 
     public void install(File file, String downloadId) {
@@ -196,21 +241,9 @@ class ABUpdateInstaller {
             return;
         }
 
-        long offset;
-        String[] headerKeyValuePairs;
-        try (ZipFile zipFile = ZipFile.builder().setFile(file).get()) {
-            offset = zipFile.getEntry(Constants.AB_PAYLOAD_BIN_PATH).getDataOffset();
-            ZipArchiveEntry payloadPropEntry =
-                    zipFile.getEntry(Constants.AB_PAYLOAD_PROPERTIES_PATH);
-            try (InputStream is = zipFile.getInputStream(payloadPropEntry);
-                 InputStreamReader isr = new InputStreamReader(is);
-                 BufferedReader br = new BufferedReader(isr)) {
-                List<String> lines = new ArrayList<>();
-                for (String line; (line = br.readLine()) != null;) {
-                    lines.add(line);
-                }
-                headerKeyValuePairs = lines.toArray(new String[0]);
-            }
+        Payload payload;
+        try {
+            payload = Payload.from(file);
         } catch (IOException | IllegalArgumentException e) {
             Log.e(TAG, "Could not prepare " + file, e);
             Update update = mUpdaterController.getUpdate(downloadId);
@@ -220,44 +253,60 @@ class ABUpdateInstaller {
             return;
         }
 
-        if (!mBound) {
-            mBound = mUpdateEngine.bind(mUpdateEngineCallback);
-            if (!mBound) {
-                Log.e(TAG, "Could not bind");
-                Update update = mUpdaterController.getUpdate(downloadId);
-                mUpdaterController.setUpdate(downloadId,
-                        update.withStatus(UpdateStatus.INSTALLATION_FAILED));
-                mUpdaterController.notifyUpdateChange(downloadId);
-                return;
-            }
+        if (!bindUpdateEngine(downloadId)) {
+            return;
         }
 
         applyPerformanceMode(UserPreferencesRepository.getAbPerfModeBlocking(mContext));
 
-        String zipFileUri = "file://" + file.getAbsolutePath();
+        applyPayload(
+                payload.url,
+                payload.offset,
+                payload.size,
+                payload.headerKeyValuePairs,
+                downloadId);
+
+    }
+
+    private boolean bindUpdateEngine(String downloadId) {
+        if (!mBound) {
+            mBound = mUpdateEngine.bind(mUpdateEngineCallback);
+            if (!mBound) {
+                Log.e(TAG, "Could not bind");
+                setInstallationFailed(downloadId);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void applyPayload(String url, long offset, long size,
+            String[] headerKeyValuePairs, String downloadId) {
+        if (mCancelled) {
+            return;
+        }
         try {
-            mUpdateEngine.applyPayload(zipFileUri, offset, 0, headerKeyValuePairs);
+            mUpdateEngine.applyPayload(url, offset, size, headerKeyValuePairs);
         } catch (ServiceSpecificException e) {
             if (e.errorCode == 66 /* kUpdateAlreadyInstalled */) {
                 installationDone(true);
-                Update update = mUpdaterController.getUpdate(mDownloadId);
-                mUpdaterController.setUpdate(mDownloadId,
+                Update update = mUpdaterController.getUpdate(downloadId);
+                mUpdaterController.setUpdate(downloadId,
                         update.withStatus(UpdateStatus.UPDATED_NEED_REBOOT));
-                mUpdaterController.notifyUpdateChange(mDownloadId);
+                mUpdaterController.notifyUpdateChange(downloadId);
                 return;
             }
             throw e;
         }
 
-        Update update = mUpdaterController.getUpdate(mDownloadId);
-        mUpdaterController.setUpdate(mDownloadId,
+        Update update = mUpdaterController.getUpdate(downloadId);
+        mUpdaterController.setUpdate(downloadId,
                 update.withStatus(UpdateStatus.INSTALLING));
-        mUpdaterController.notifyUpdateChange(mDownloadId);
+        mUpdaterController.notifyUpdateChange(downloadId);
 
         PreferenceManager.getDefaultSharedPreferences(mContext).edit()
-                .putString(PREF_INSTALLING_AB_ID, mDownloadId)
+                .putString(PREF_INSTALLING_AB_ID, downloadId)
                 .apply();
-
     }
 
     public void reconnect() {
@@ -288,7 +337,19 @@ class ABUpdateInstaller {
         PreferenceManager.getDefaultSharedPreferences(mContext).edit()
                 .putString(Constants.PREF_NEEDS_REBOOT_ID, id)
                 .remove(PREF_INSTALLING_AB_ID)
+                .remove(PREF_INSTALLING_SUSPENDED_AB_ID)
                 .apply();
+    }
+
+    private void setInstallationFailed(String downloadId) {
+        installationDone(false);
+        Update update = mUpdaterController.getUpdate(downloadId);
+        mUpdaterController.setUpdate(downloadId, update.toBuilder()
+                .setInstallProgress(0)
+                .setFinalizing(false)
+                .setStatus(UpdateStatus.INSTALLATION_FAILED)
+                .build());
+        mUpdaterController.notifyUpdateChange(downloadId);
     }
 
     public void cancel() {
@@ -297,8 +358,15 @@ class ABUpdateInstaller {
             return;
         }
 
+        mCancelled = true;
+
         if (!mBound) {
             Log.e(TAG, "Not connected to update engine");
+            installationDone(false);
+            Update update = mUpdaterController.getUpdate(mDownloadId);
+            mUpdaterController.setUpdate(mDownloadId,
+                    update.withStatus(UpdateStatus.INSTALLATION_CANCELLED));
+            mUpdaterController.notifyUpdateChange(mDownloadId);
             return;
         }
 

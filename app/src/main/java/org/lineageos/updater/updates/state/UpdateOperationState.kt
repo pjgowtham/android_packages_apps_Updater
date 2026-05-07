@@ -36,6 +36,7 @@ data class UpdateOperationState(
     val isBusy: Boolean,
     val isFullyDownloaded: Boolean,
     val canInstall: Boolean,
+    val canStreamInstall: Boolean,
     val canExport: Boolean,
     val canDelete: Boolean,
 ) {
@@ -67,7 +68,11 @@ data class UpdateOperationState(
         get() = phase.titleRes
 
     companion object {
-        fun from(controller: UpdaterController, update: Update): UpdateOperationState {
+        fun from(
+            controller: UpdaterController,
+            update: Update,
+            streamInstallEnabled: Boolean,
+        ): UpdateOperationState {
             val downloadId = update.downloadId
             val status = update.status
             val phase = when {
@@ -98,12 +103,15 @@ data class UpdateOperationState(
                     phase == UpdateOperationPhase.VERIFICATION_FAILED
             val isLocal = downloadId == Update.LOCAL_ID
             val isFullyDownloaded = controller.isFullyDownloaded(update)
+            val canStreamInstall = InstallUtils.canStreamInstall(update, streamInstallEnabled) &&
+                    phase == UpdateOperationPhase.IDLE
 
             return UpdateOperationState(
                 phase = phase,
                 isBusy = controller.isBusy,
                 isFullyDownloaded = isLocal || isFullyDownloaded,
                 canInstall = InstallUtils.canInstall(update) || isLocal,
+                canStreamInstall = canStreamInstall,
                 canExport = phase == UpdateOperationPhase.VERIFIED && !isLocal,
                 canDelete = canDelete,
 

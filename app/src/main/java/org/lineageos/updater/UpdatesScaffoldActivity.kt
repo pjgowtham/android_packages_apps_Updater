@@ -45,6 +45,7 @@ import com.android.settingslib.spa.widget.ui.LinearLoadingBar
 import org.lineageos.updater.controller.UpdaterController
 import org.lineageos.updater.data.Update
 import org.lineageos.updater.data.UpdateStatus
+import org.lineageos.updater.data.UserPreferencesRepository
 import org.lineageos.updater.deviceinfo.DeviceInfoBanner
 import org.lineageos.updater.preferences.PreferencesActivity
 import org.lineageos.updater.updates.UpdateList
@@ -80,6 +81,11 @@ abstract class UpdatesScaffoldActivity : ComponentActivity() {
                     val uiState by viewModel.uiState.collectAsState()
                     val networkState by NetworkMonitor.getInstance(this@UpdatesScaffoldActivity)
                         .networkState.collectAsState()
+                    val userPreferencesRepository = remember {
+                        UserPreferencesRepository(this@UpdatesScaffoldActivity)
+                    }
+                    val streamInstallEnabled by userPreferencesRepository.streamInstallFlow
+                        .collectAsState(initial = true)
                     val updates = uiState.updates
                     val titleText = when {
                         updates.any { it.status == UpdateStatus.UPDATED_NEED_REBOOT } ->
@@ -112,12 +118,14 @@ abstract class UpdatesScaffoldActivity : ComponentActivity() {
                             updates,
                             updaterController,
                             networkState.isOnline,
+                            streamInstallEnabled,
                             controllerStateVersion,
                         ) {
                             val controller = updaterController ?: return@remember emptyList()
                             val mapper = UpdateItemStateMapper(
                                 this@UpdatesScaffoldActivity,
                                 controller,
+                                streamInstallEnabled,
                             )
                             updates.map { update ->
                                 val freshUpdate = checkNotNull(
