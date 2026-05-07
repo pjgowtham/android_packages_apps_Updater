@@ -11,93 +11,96 @@ import org.lineageos.updater.controller.UpdaterController
 import org.lineageos.updater.data.Update
 import org.lineageos.updater.data.UpdateStatus
 import org.lineageos.updater.deviceinfo.DeviceInfoUtils
-import org.lineageos.updater.misc.Utils
+import org.lineageos.updater.util.InstallUtils
 
-/**
- * Snapshot of the controller's per-update state, queried once and shared across
- * the action resolver and state mapper to avoid duplicate controller calls.
- */
-data class UpdateOperationState(
-    val isDownloading: Boolean,
-    val isDownloadPaused: Boolean,
-    val isVerifying: Boolean,
-    val isVerified: Boolean,
-    val canInstall: Boolean,
-    val isABInstall: Boolean,
-    val isInstalling: Boolean,
-    val isInstallationSuspended: Boolean,
-    val isWaitingForReboot: Boolean,
-    val isFullyDownloaded: Boolean,
-    val isLocal: Boolean,
-    val isBusy: Boolean,
-    @param:StringRes val statusRes: Int?,
+enum class UpdateOperationPhase(
+    @param:StringRes val titleRes: Int? = null,
 ) {
-    val canDelete: Boolean
-        get() = isFullyDownloaded && !isVerifying && !isInstalling
+    IDLE,
+    DOWNLOADING(R.string.downloading_notification),
+    DOWNLOAD_PAUSED(R.string.download_paused_notification),
+    DOWNLOAD_ERROR(R.string.download_paused_error_notification),
+    VERIFYING(R.string.list_verifying_update),
+    VERIFICATION_FAILED(R.string.verification_failed_notification),
+    VERIFIED(R.string.download_completed_notification),
+    INSTALLING_RECOVERY(R.string.dialog_prepare_zip_message),
+    INSTALLING(R.string.preparing_ota_first_boot),
+    FINALIZING(R.string.finalizing_package),
+    INSTALLATION_SUSPENDED(R.string.installation_suspended_notification),
+    INSTALLATION_FAILED(R.string.update_failed_notification),
+    WAITING_FOR_REBOOT(R.string.installing_update_finished),
+}
 
-    val canExport: Boolean
-        get() = isVerified && !isLocal
+data class UpdateOperationState(
+    val phase: UpdateOperationPhase,
+    val isBusy: Boolean,
+    val isFullyDownloaded: Boolean,
+    val canInstall: Boolean,
+    val canExport: Boolean,
+    val canDelete: Boolean,
+) {
+    val isDownloading: Boolean
+        get() = phase == UpdateOperationPhase.DOWNLOADING
+
+    val isDownloadPaused: Boolean
+        get() = phase == UpdateOperationPhase.DOWNLOAD_PAUSED ||
+                phase == UpdateOperationPhase.DOWNLOAD_ERROR
+
+    val isVerifying: Boolean
+        get() = phase == UpdateOperationPhase.VERIFYING
+
+    val isInstalling: Boolean
+        get() =
+            phase in UpdateOperationPhase.INSTALLING_RECOVERY..UpdateOperationPhase.INSTALLATION_SUSPENDED
+
+    val isFinalizing: Boolean
+        get() = phase == UpdateOperationPhase.FINALIZING
+
+    @get:StringRes
+    val titleRes: Int?
+        get() = phase.titleRes
 
     companion object {
         fun from(controller: UpdaterController, update: Update): UpdateOperationState {
             val downloadId = update.downloadId
+            val status = update.status
+            val phase = when {
+                controller.isDownloading(downloadId) -> UpdateOperationPhase.DOWNLOADING
+                status == UpdateStatus.PAUSED -> UpdateOperationPhase.DOWNLOAD_PAUSED
+                status == UpdateStatus.PAUSED_ERROR -> UpdateOperationPhase.DOWNLOAD_ERROR
 
-            val isDownloading = controller.isDownloading(downloadId)
-            val isDownloadPaused = update.status == UpdateStatus.PAUSED ||
-                    update.status == UpdateStatus.PAUSED_ERROR
-            val isDownloadError = update.status == UpdateStatus.PAUSED_ERROR
+                controller.isVerifyingUpdate(downloadId) -> UpdateOperationPhase.VERIFYING
+                status == UpdateStatus.VERIFICATION_FAILED -> UpdateOperationPhase.VERIFICATION_FAILED
+                status == UpdateStatus.VERIFIED -> UpdateOperationPhase.VERIFIED
 
-            val isVerifying = controller.isVerifyingUpdate(downloadId)
-            val isVerified = update.status == UpdateStatus.VERIFIED
-            val isVerificationFailed = update.status == UpdateStatus.VERIFICATION_FAILED
+                controller.isWaitingForReboot(downloadId) -> UpdateOperationPhase.WAITING_FOR_REBOOT
 
-            val isInstalling = controller.isInstallingUpdate(downloadId)
-            val isInstallationSuspended =
-                update.status == UpdateStatus.INSTALLATION_SUSPENDED
-            val isInstallationFailed = update.status == UpdateStatus.INSTALLATION_FAILED
+                controller.isInstallingUpdate(downloadId) ->
+                    when {
+                        !DeviceInfoUtils.isABDevice -> UpdateOperationPhase.INSTALLING_RECOVERY
+                        status == UpdateStatus.INSTALLATION_SUSPENDED -> UpdateOperationPhase.INSTALLATION_SUSPENDED
+                        update.isFinalizing -> UpdateOperationPhase.FINALIZING
+                        else -> UpdateOperationPhase.INSTALLING
+                    }
 
-            val isWaitingForReboot = controller.isWaitingForReboot(downloadId)
-            val isExporting = false
-            val isLocal = downloadId == Update.LOCAL_ID
+                status == UpdateStatus.INSTALLATION_SUSPENDED -> UpdateOperationPhase.INSTALLATION_SUSPENDED
+                status == UpdateStatus.INSTALLATION_FAILED -> UpdateOperationPhase.INSTALLATION_FAILED
 
-            val statusRes = when {
-                isDownloading -> R.string.downloading_notification
-                isDownloadError -> R.string.download_paused_error_notification
-                isDownloadPaused -> R.string.download_paused_notification
-
-                isVerifying -> R.string.list_verifying_update
-                isVerificationFailed -> R.string.verification_failed_notification
-
-                isInstallationSuspended -> R.string.installation_suspended_notification
-                isInstalling && !DeviceInfoUtils.isABDevice ->
-                    R.string.dialog_prepare_zip_message
-                isInstalling && update.isFinalizing ->
-                    R.string.finalizing_package
-                isInstalling ->
-                    R.string.preparing_ota_first_boot
-                isInstallationFailed -> R.string.update_failed_notification
-
-                isWaitingForReboot -> R.string.installing_update_finished
-                isExporting -> R.string.dialog_export_title
-                isVerified -> R.string.download_completed_notification
-
-                else -> null
+                else -> UpdateOperationPhase.IDLE
             }
+            val canDelete = phase == UpdateOperationPhase.VERIFIED ||
+                    phase == UpdateOperationPhase.VERIFICATION_FAILED
+            val isLocal = downloadId == Update.LOCAL_ID
+            val isFullyDownloaded = controller.isFullyDownloaded(update)
 
             return UpdateOperationState(
-                isDownloading = isDownloading,
-                isDownloadPaused = isDownloadPaused,
-                isVerifying = isVerifying,
-                isVerified = isVerified,
-                canInstall = Utils.canInstall(update) || isLocal,
-                isABInstall = controller.isInstallingABUpdate(),
-                isInstalling = isInstalling || isInstallationSuspended,
-                isInstallationSuspended = isInstallationSuspended,
-                isWaitingForReboot = isWaitingForReboot,
-                isFullyDownloaded = controller.isFullyDownloaded(update),
-                isLocal = isLocal,
-                isBusy = controller.isBusy(),
-                statusRes = statusRes,
+                phase = phase,
+                isBusy = controller.isBusy,
+                isFullyDownloaded = isLocal || isFullyDownloaded,
+                canInstall = InstallUtils.canInstall(update) || isLocal,
+                canExport = phase == UpdateOperationPhase.VERIFIED && !isLocal,
+                canDelete = canDelete,
+
             )
         }
     }

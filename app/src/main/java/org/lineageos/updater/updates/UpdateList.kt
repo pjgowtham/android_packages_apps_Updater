@@ -7,7 +7,7 @@ package org.lineageos.updater.updates
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,7 +30,7 @@ fun UpdateList(
 ) {
     if (items.isEmpty()) {
         ZeroStatePreference(
-            icon = Icons.Outlined.CheckCircle,
+            icon = Icons.Outlined.Check,
             text = stringResource(R.string.snack_no_updates_found),
             description = stringResource(R.string.list_no_updates),
         )
@@ -38,28 +38,48 @@ fun UpdateList(
     }
 
     var expanded by rememberSaveable { mutableStateOf(false) }
-
-    // Latest update (first) + any active items are visible in collapsed state
-    val collapsedVisibleItems = (listOf(items.first()) + items.filter { it.progress != null }).distinct()
+    var expandedItemIds by rememberSaveable { mutableStateOf(emptySet<String>()) }
+    val activeItems = items.filter { it.progress != null }
+    val collapsedVisibleItems =
+        (listOf(items.first()) + activeItems).distinctBy { it.downloadId }
+    val hiddenItemCount = items.size - collapsedVisibleItems.size
     val visibleItems = if (expanded) items else collapsedVisibleItems
-    val hiddenCount = items.size - collapsedVisibleItems.size
 
     Column(modifier = modifier) {
         Category {
             visibleItems.forEach { item ->
+                val staysExpanded = item.progress != null
+                val itemExpanded = staysExpanded || (item.downloadId in expandedItemIds)
+                val onExpandToggle = if (staysExpanded) {
+                    null
+                } else {
+                    {
+                        expandedItemIds =
+                            if (item.downloadId in expandedItemIds) {
+                                expandedItemIds - item.downloadId
+                            } else {
+                                expandedItemIds + item.downloadId
+                            }
+                    }
+                }
+
                 UpdateItem(
                     state = item,
-                    expanded = expanded || items.size == 1,
+                    expanded = itemExpanded,
+                    onExpandToggle = onExpandToggle,
                     onAction = { action -> onAction(action, item.downloadId) },
                 )
             }
         }
 
-        if (hiddenCount > 0) {
+        if (hiddenItemCount > 0) {
             CollapseBar(
                 expanded = expanded,
-                hiddenItemCount = hiddenCount,
-                onExpandedChange = { expanded = it },
+                hiddenItemCount = hiddenItemCount,
+                onExpandedChange = {
+                    expanded = it
+                    if (!it) expandedItemIds = emptySet()
+                },
             )
         }
     }

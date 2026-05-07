@@ -6,15 +6,14 @@
 package org.lineageos.updater.updates.action
 
 import android.app.Activity
-import android.app.AlertDialog
 import android.content.Intent
-import android.net.Uri
 import android.os.PowerManager
-import android.text.SpannableString
-import android.text.method.LinkMovementMethod
-import android.text.util.Linkify
-import android.widget.TextView
-import java.time.format.FormatStyle
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.core.net.toUri
 import org.lineageos.updater.R
 import org.lineageos.updater.controller.UpdaterController
 import org.lineageos.updater.controller.UpdaterService
@@ -28,59 +27,212 @@ import org.lineageos.updater.util.InstallUtils
 import org.lineageos.updater.util.NetworkMonitor
 import org.lineageos.updater.util.StringUtil
 import org.lineageos.updater.util.currentLocale
+import java.time.format.FormatStyle
 
 class UpdateActionHandler(
     private val activity: Activity,
     private val updaterController: UpdaterController,
     private val exportUpdate: (Update) -> Unit,
+    private val showDialog: (AlertDialogState) -> Unit,
 ) {
 
     private val batteryMonitor = BatteryMonitor.getInstance(activity)
     private val networkMonitor = NetworkMonitor.getInstance(activity)
-    private var infoDialog: AlertDialog? = null
 
     fun perform(action: UpdateAction, update: Update) {
         val downloadId = update.downloadId
         when (action.type) {
-            UpdateActionType.START_DOWNLOAD -> startDownload(downloadId)
+            UpdateActionType.START_DOWNLOAD -> runWithActiveDownloadWarning(update) {
+                runDownloadWithMeteredWarning {
+                    updaterController.startDownload(downloadId)
+                }
+            }
+
             UpdateActionType.PAUSE_DOWNLOAD -> updaterController.pauseDownload(downloadId)
-            UpdateActionType.RESUME_DOWNLOAD -> resumeDownload(update)
-            UpdateActionType.CANCEL_DOWNLOAD -> updaterController.cancelDownload(downloadId)
-            UpdateActionType.START_INSTALL -> install(update)
+            UpdateActionType.RESUME_DOWNLOAD -> runWithActiveDownloadWarning(update) {
+                if (updaterController.isFullyDownloaded(update)) {
+                    updaterController.resumeDownload(downloadId)
+                } else {
+                    runDownloadWithMeteredWarning {
+                        updaterController.resumeDownload(downloadId)
+                    }
+                }
+            }
+
+            UpdateActionType.CANCEL_DOWNLOAD -> showConfirmDialog(
+                title = activity.getString(R.string.confirm_cancel_dialog_title),
+                message = activity.getString(R.string.confirm_cancel_dialog_message),
+                onConfirm = { updaterController.cancelDownload(downloadId) },
+            )
+
+            UpdateActionType.START_INSTALL -> {
+                if (update.downloadId != Update.LOCAL_ID && !InstallUtils.canInstall(update)) {
+                    return
+                }
+
+                if (!batteryMonitor.batteryState.value.isLevelOk) {
+                    showDialog(
+                        AlertDialogState(
+                            title = activity.getString(R.string.dialog_battery_low_title),
+                            text = AnnotatedString(
+                                activity.getString(
+                                    R.string.dialog_battery_low_message_pct,
+                                    BatteryState.MIN_BATT_PCT_DISCHARGING,
+                                    BatteryState.MIN_BATT_PCT_CHARGING,
+                                )
+                            ),
+                        )
+                    )
+                    return
+                }
+
+                if (InstallUtils.isScratchMounted()) {
+                    showDialog(
+                        AlertDialogState(
+                            title = activity.getString(R.string.dialog_scratch_mounted_title),
+                            text = AnnotatedString(
+                                activity.getString(
+                                    R.string.dialog_scratch_mounted_message,
+                                )
+                            ),
+                        )
+                    )
+                    return
+                }
+
+                val messageRes = if (DeviceInfoUtils.isABDevice) {
+                    R.string.apply_update_dialog_message_ab
+                } else {
+                    R.string.apply_update_dialog_message
+                }
+                val buildDate = StringUtil.getDateLocalizedUTC(
+                    activity,
+                    FormatStyle.MEDIUM,
+                    update.timestamp,
+                )
+                val buildInfoText = activity.getString(
+                    R.string.list_build_version_date,
+                    update.version,
+                    buildDate,
+                )
+                showDialog(
+                    AlertDialogState(
+                        title = activity.getString(R.string.apply_update_dialog_title),
+                        text = AnnotatedString(
+                            activity.getString(
+                                messageRes,
+                                buildInfoText,
+                                activity.getString(android.R.string.ok),
+                            )
+                        ),
+                        onConfirm = {
+                            Utils.triggerUpdate(activity, update.downloadId)
+                        },
+                        showDismiss = true,
+                    )
+                )
+            }
+
             UpdateActionType.PAUSE_INSTALL -> startInstallService(
                 UpdaterService.ACTION_INSTALL_SUSPEND
             )
+
             UpdateActionType.RESUME_INSTALL -> startInstallService(
                 UpdaterService.ACTION_INSTALL_RESUME
             )
-            UpdateActionType.CANCEL_INSTALL -> startInstallService(
-                UpdaterService.ACTION_INSTALL_STOP
+
+            UpdateActionType.CANCEL_INSTALL -> showConfirmDialog(
+                title = activity.getString(R.string.cancel_installation_dialog_title),
+                message = activity.getString(R.string.cancel_installation_dialog_message),
+                onConfirm = { startInstallService(UpdaterService.ACTION_INSTALL_STOP) },
             )
-            UpdateActionType.SHOW_INFO -> showInfoDialog()
-            UpdateActionType.DELETE -> updaterController.deleteUpdate(downloadId)
+
+            UpdateActionType.SHOW_INFO -> {
+                val reason = InstallUtils.getBlockedReason(update)
+                val title: String
+                val message: AnnotatedString
+
+                when (reason) {
+                    InstallUtils.BlockedReason.DOWNGRADE -> {
+                        title = activity.getString(R.string.blocked_update_dialog_title_downgrade)
+                        message =
+                            AnnotatedString(activity.getString(R.string.blocked_update_dialog_message_downgrade))
+                    }
+
+                    InstallUtils.BlockedReason.VERSION_UNSUPPORTED -> {
+                        title = activity.getString(R.string.blocked_update_dialog_title)
+                        val url = activity.getString(
+                            R.string.blocked_update_info_url,
+                            DeviceInfoUtils.device
+                        )
+                        val messageString = String.format(
+                            activity.currentLocale,
+                            activity.getString(R.string.blocked_update_dialog_message),
+                            url
+                        )
+                        message = buildAnnotatedString {
+                            append(messageString)
+                            val urlStart = messageString.indexOf(url)
+                            if (urlStart != -1) {
+                                val urlEnd = urlStart + url.length
+                                addStyle(
+                                    style = SpanStyle(
+                                        textDecoration = TextDecoration.Underline
+                                    ),
+                                    start = urlStart,
+                                    end = urlEnd
+                                )
+                                addLink(LinkAnnotation.Url(url), urlStart, urlEnd)
+                            }
+                        }
+                    }
+
+                    InstallUtils.BlockedReason.NONE -> return
+                }
+
+                showDialog(
+                    AlertDialogState(
+                        title = title,
+                        text = message,
+                    )
+                )
+            }
+
+            UpdateActionType.DELETE -> showConfirmDialog(
+                title = activity.getString(R.string.confirm_delete_dialog_title),
+                message = activity.getString(R.string.confirm_delete_dialog_message),
+                onConfirm = { updaterController.deleteUpdate(downloadId) },
+            )
+
             UpdateActionType.EXPORT -> exportUpdate(update)
-            UpdateActionType.VIEW_DOWNLOADS -> viewDownloads()
+            UpdateActionType.VIEW_DOWNLOADS -> activity.startActivity(
+                Intent(
+                    Intent.ACTION_VIEW,
+                    activity.getString(
+                        R.string.menu_downloads_url,
+                        DeviceInfoUtils.device,
+                    ).toUri(),
+                )
+            )
+
             UpdateActionType.REBOOT ->
                 activity.getSystemService(PowerManager::class.java).reboot(null)
         }
     }
 
-    private fun startDownload(downloadId: String) {
-        runDownloadWithMeteredWarning {
-            updaterController.startDownload(downloadId)
-        }
-    }
-
-    private fun resumeDownload(update: Update) {
-        val file = update.file
-        if (file != null && update.fileSize > 0 && file.length() >= update.fileSize) {
-            updaterController.resumeDownload(update.downloadId)
+    private fun runWithActiveDownloadWarning(update: Update, downloadAction: () -> Unit) {
+        if (!updaterController.hasActiveDownloads() ||
+            updaterController.isDownloading(update.downloadId)
+        ) {
+            downloadAction()
             return
         }
 
-        runDownloadWithMeteredWarning {
-            updaterController.resumeDownload(update.downloadId)
-        }
+        showConfirmDialog(
+            title = activity.getString(R.string.download_switch_confirm_title),
+            message = activity.getString(R.string.download_switch_confirm_message),
+            onConfirm = downloadAction,
+        )
     }
 
     private fun runDownloadWithMeteredWarning(downloadAction: () -> Unit) {
@@ -90,114 +242,31 @@ class UpdateActionHandler(
             return
         }
 
-        AlertDialog.Builder(activity)
-            .setTitle(R.string.update_over_metered_network_title)
-            .setMessage(R.string.update_over_metered_network_message)
-            .setPositiveButton(android.R.string.ok) { _, _ -> downloadAction() }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
-    }
-
-    private fun install(update: Update) {
-        if (canInstall(update)) {
-            getInstallDialog(update)?.show()
-        }
-    }
-
-    private fun canInstall(update: Update) =
-        update.downloadId == Update.LOCAL_ID || Utils.canInstall(update)
-
-    private fun getInstallDialog(update: Update): AlertDialog.Builder? {
-        if (!batteryMonitor.batteryState.value.isLevelOk) {
-            val message = activity.getString(
-                R.string.dialog_battery_low_message_pct,
-                BatteryState.MIN_BATT_PCT_DISCHARGING,
-                BatteryState.MIN_BATT_PCT_CHARGING,
-            )
-            return AlertDialog.Builder(activity)
-                .setTitle(R.string.dialog_battery_low_title)
-                .setMessage(message)
-                .setPositiveButton(android.R.string.ok, null)
-        }
-
-        if (InstallUtils.isScratchMounted()) {
-            return AlertDialog.Builder(activity)
-                .setTitle(R.string.dialog_scratch_mounted_title)
-                .setMessage(R.string.dialog_scratch_mounted_message)
-                .setPositiveButton(android.R.string.ok, null)
-        }
-
-        val messageRes = if (DeviceInfoUtils.isABDevice) {
-            R.string.apply_update_dialog_message_ab
-        } else {
-            R.string.apply_update_dialog_message
-        }
-
-        val buildDate = StringUtil.getDateLocalizedUTC(
-            activity,
-            FormatStyle.MEDIUM,
-            update.timestamp,
-        )
-        val buildInfoText = activity.getString(
-            R.string.list_build_version_date,
-            update.version,
-            buildDate,
-        )
-        return AlertDialog.Builder(activity)
-            .setTitle(R.string.apply_update_dialog_title)
-            .setMessage(
-                activity.getString(
-                    messageRes,
-                    buildInfoText,
-                    activity.getString(android.R.string.ok),
-                )
-            )
-            .setPositiveButton(android.R.string.ok) { _, _ ->
-                Utils.triggerUpdate(activity, update.downloadId)
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-    }
-
-    private fun viewDownloads() {
-        activity.startActivity(
-            Intent(
-                Intent.ACTION_VIEW,
-                Uri.parse(
-                    activity.getString(
-                        R.string.menu_downloads_url,
-                        DeviceInfoUtils.device,
-                    )
-                ),
-            )
+        showConfirmDialog(
+            title = activity.getString(R.string.update_over_metered_network_title),
+            message = activity.getString(R.string.update_over_metered_network_message),
+            onConfirm = downloadAction,
         )
     }
 
-    private fun showInfoDialog() {
-        val messageString = String.format(
-            activity.currentLocale,
-            activity.getString(R.string.blocked_update_dialog_message),
-            activity.getString(
-                R.string.blocked_update_info_url,
-                DeviceInfoUtils.device,
-            ),
-        )
-        val message = SpannableString(messageString)
-        Linkify.addLinks(message, Linkify.WEB_URLS)
-
-        infoDialog?.dismiss()
-        infoDialog = AlertDialog.Builder(activity)
-            .setTitle(R.string.blocked_update_dialog_title)
-            .setPositiveButton(android.R.string.ok, null)
-            .setMessage(message)
-            .show()
-
-        infoDialog?.findViewById<TextView>(android.R.id.message)?.movementMethod =
-            LinkMovementMethod.getInstance()
-    }
-
-    private fun startInstallService(action: String) {
+    private fun startInstallService(intentAction: String) {
         activity.startService(
-            Intent(activity, UpdaterService::class.java).setAction(action)
+            Intent(activity, UpdaterService::class.java).setAction(intentAction)
+        )
+    }
+
+    private fun showConfirmDialog(
+        title: String,
+        message: CharSequence,
+        onConfirm: () -> Unit = {},
+    ) {
+        showDialog(
+            AlertDialogState(
+                title = title,
+                text = AnnotatedString(message.toString()),
+                onConfirm = onConfirm,
+                showDismiss = true,
+            )
         )
     }
 }

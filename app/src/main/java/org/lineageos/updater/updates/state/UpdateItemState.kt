@@ -9,23 +9,22 @@ import org.lineageos.updater.updates.action.UpdateActions
 
 data class UpdateItemState(
     val downloadId: String,
+    val isLocal: Boolean,
 
-    // Collapsed State
     val buildDate: String,
     val buildVersion: String,
     val status: String,
-    val isLocal: Boolean,
 
-    // Expanded State
     val fileSize: String,
+
     val progress: ProgressState?,
     val actions: UpdateActions,
 )
 
 sealed interface ProgressState {
     data class Determinate(
-        val progress: Float,
-        val downloadedFileSize: String,
+        val percent: Float,
+        val downloadedSize: String,
         val eta: String,
     ) : ProgressState
 

@@ -64,7 +64,7 @@ fun ActionBar(
                     Text(button.text)
                 }
 
-                is ActionBarButton.MediaIcon -> FilledIconButton(
+                is ActionBarButton.Icon -> FilledIconButton(
                     onClick = button.onClick,
                     shapes = IconButtonDefaults.shapes(),
                     enabled = button.enabled,
@@ -75,6 +75,7 @@ fun ActionBar(
                         modifier = Modifier.size(SettingsDimension.itemIconSize),
                     )
                 }
+
             }
         }
 
@@ -101,7 +102,7 @@ sealed class ActionBarButton {
         override val onClick: () -> Unit,
     ) : ActionBarButton()
 
-    data class MediaIcon(
+    data class Icon(
         val imageVector: ImageVector,
         val contentDescription: String? = null,
         override val enabled: Boolean = true,
@@ -131,7 +132,7 @@ private fun ActionBarDownloadingPreview() {
         ActionBar(
             buttons = listOf(
                 ActionBarButton.Outlined(text = "Cancel") {},
-                ActionBarButton.MediaIcon(
+                ActionBarButton.Icon(
                     imageVector = Icons.Outlined.Pause,
                     contentDescription = "Pause",
                 ) {},
@@ -150,7 +151,7 @@ private fun ActionBarPausedPreview() {
         ActionBar(
             buttons = listOf(
                 ActionBarButton.Outlined(text = "Cancel") {},
-                ActionBarButton.MediaIcon(
+                ActionBarButton.Icon(
                     imageVector = Icons.Outlined.PlayArrow,
                     contentDescription = "Resume",
                 ) {},
