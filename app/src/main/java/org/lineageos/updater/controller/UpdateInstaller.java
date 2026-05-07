@@ -1,28 +1,18 @@
 /*
- * Copyright (C) 2017-2022 The LineageOS Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * SPDX-FileCopyrightText: The LineageOS Project
+ * SPDX-License-Identifier: Apache-2.0
  */
+
 package org.lineageos.updater.controller;
 
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.SystemClock;
-import android.os.SystemProperties;
 import android.util.Log;
 
 import androidx.preference.PreferenceManager;
 
+import org.lineageos.updater.deviceinfo.DeviceInfoUtils;
 import org.lineageos.updater.misc.Constants;
 import org.lineageos.updater.misc.FileUtils;
 import org.lineageos.updater.misc.Utils;
@@ -78,7 +68,7 @@ class UpdateInstaller {
 
         UpdateInfo update = mUpdaterController.getUpdate(downloadId);
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(mContext);
-        long buildTimestamp = SystemProperties.getLong(Constants.PROP_BUILD_DATE, 0);
+        long buildTimestamp = DeviceInfoUtils.getBuildDateTimestamp();
         long lastBuildTimestamp = preferences.getLong(Constants.PREF_INSTALL_OLD_TIMESTAMP,
                 buildTimestamp);
         boolean isReinstalling = buildTimestamp == lastBuildTimestamp;
