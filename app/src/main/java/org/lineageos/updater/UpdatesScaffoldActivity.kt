@@ -11,6 +11,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -47,6 +49,7 @@ import org.lineageos.updater.data.Update
 import org.lineageos.updater.data.UpdateStatus
 import org.lineageos.updater.deviceinfo.DeviceInfoBanner
 import org.lineageos.updater.preferences.PreferencesActivity
+import org.lineageos.updater.ui.bringIntoViewOnFocus
 import org.lineageos.updater.updates.UpdateList
 import org.lineageos.updater.updates.action.AlertDialogState
 import org.lineageos.updater.updates.action.UpdateActionDialog
@@ -193,6 +196,7 @@ private fun WideUpdatesScaffold(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
+                .focusGroup()
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = paddingValues.calculateBottomPadding()),
         )
@@ -302,7 +306,7 @@ private fun UpdatesActionPane(
         }
     }
 
-    Column(modifier = modifier) {
+    Column(modifier = modifier.focusGroup()) {
         UpdatesCheck(
             model = model,
             onCheckClick = onRefreshClick,
@@ -342,16 +346,20 @@ private fun UpdatesFooter(
     val preferencesSummary = stringResource(R.string.preferences_summary)
 
     Category {
-        Preference(object : PreferenceModel {
-            override val title = stringResource(R.string.local_update_import)
-            override val summary = { localUpdateSummary }
-            override val onClick = onLocalUpdateClick
-        })
-        Preference(object : PreferenceModel {
-            override val title = stringResource(R.string.menu_preferences)
-            override val summary = { preferencesSummary }
-            override val onClick = onPreferencesClick
-        })
+        Box(Modifier.bringIntoViewOnFocus(includeChildren = true)) {
+            Preference(object : PreferenceModel {
+                override val title = stringResource(R.string.local_update_import)
+                override val summary = { localUpdateSummary }
+                override val onClick = onLocalUpdateClick
+            })
+        }
+        Box(Modifier.bringIntoViewOnFocus(includeChildren = true)) {
+            Preference(object : PreferenceModel {
+                override val title = stringResource(R.string.menu_preferences)
+                override val summary = { preferencesSummary }
+                override val onClick = onPreferencesClick
+            })
+        }
     }
 }
 

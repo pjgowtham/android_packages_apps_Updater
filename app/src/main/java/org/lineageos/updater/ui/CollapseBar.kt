@@ -28,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import com.android.settingslib.spa.debug.UiModePreviews
 import com.android.settingslib.spa.framework.theme.SettingsDimension
 import com.android.settingslib.spa.framework.theme.SettingsSpace
@@ -55,7 +56,8 @@ fun CollapseBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clickable { onExpandedChange(!expanded) }
+            .bringIntoViewOnFocus()
+            .clickable(role = Role.Button) { onExpandedChange(!expanded) }
             .padding(
                 top = SettingsSpace.extraSmall4,
                 bottom = SettingsSpace.small1,

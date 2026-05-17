@@ -40,6 +40,7 @@ import com.android.settingslib.spa.widget.ui.SettingsBody
 import java.util.Date
 import kotlinx.coroutines.delay
 import org.lineageos.updater.R
+import org.lineageos.updater.ui.bringIntoViewOnFocus
 
 private const val MIN_CHECKING_DURATION_MILLIS = 2_000L
 // Matches SettingsLib's expressive zero-state background size.
@@ -117,7 +118,9 @@ private fun CheckForUpdatesButton(
 ) {
     OutlinedButton(
         onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .bringIntoViewOnFocus(),
     ) {
         Text(text = stringResource(R.string.check_for_updates))
     }

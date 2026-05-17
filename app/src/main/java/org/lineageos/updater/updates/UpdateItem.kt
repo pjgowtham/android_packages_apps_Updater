@@ -8,6 +8,8 @@ package org.lineageos.updater.updates
 import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -40,6 +42,7 @@ import com.android.settingslib.spa.framework.theme.SettingsTheme
 import com.android.settingslib.spa.widget.preference.Preference
 import com.android.settingslib.spa.widget.preference.PreferenceModel
 import com.android.settingslib.spa.widget.ui.LinearProgressBar
+import org.lineageos.updater.ui.bringIntoViewOnFocus
 import org.lineageos.updater.updates.action.UpdateAction
 import org.lineageos.updater.updates.action.UpdateActionType
 import org.lineageos.updater.updates.action.UpdateActions
@@ -61,40 +64,43 @@ fun UpdateItem(
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .focusGroup()
             .clip(SettingsShape.CornerExtraSmall2)
             .background(MaterialTheme.colorScheme.surfaceBright)
     ) {
         key(state.downloadId) {
-            Preference(model = object : PreferenceModel {
-                override val title = state.buildDate
-                override val summary = {
-                    buildString {
-                        append(state.buildVersion)
-                        if (state.status.isNotEmpty()) {
-                            append(" • ")
-                            append(state.status)
+            Box(Modifier.bringIntoViewOnFocus(includeChildren = true)) {
+                Preference(model = object : PreferenceModel {
+                    override val title = state.buildDate
+                    override val summary = {
+                        buildString {
+                            append(state.buildVersion)
+                            if (state.status.isNotEmpty()) {
+                                append(" • ")
+                                append(state.status)
+                            }
                         }
                     }
-                }
-                override val onClick = onExpandToggle
-                override val icon = if (!expanded) {
-                    @Composable {
-                        if (state.isLocal) {
-                            Icon(
-                                imageVector = Icons.Outlined.Archive,
-                                contentDescription = null,
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Outlined.CloudDownload,
-                                contentDescription = null,
-                            )
+                    override val onClick = onExpandToggle
+                    override val icon = if (!expanded) {
+                        @Composable {
+                            if (state.isLocal) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Archive,
+                                    contentDescription = null,
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Outlined.CloudDownload,
+                                    contentDescription = null,
+                                )
+                            }
                         }
+                    } else {
+                        null
                     }
-                } else {
-                    null
-                }
-            })
+                })
+            }
         }
 
         AnimatedVisibility(visible = expanded) {

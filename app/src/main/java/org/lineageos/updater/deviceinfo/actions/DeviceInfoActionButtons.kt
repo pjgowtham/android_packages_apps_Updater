@@ -29,6 +29,7 @@ import com.android.settingslib.spa.framework.theme.SettingsSpace.small1
 import com.android.settingslib.spa.framework.theme.SettingsTheme
 import org.lineageos.updater.R
 import org.lineageos.updater.deviceinfo.DeviceInfoUtils
+import org.lineageos.updater.ui.bringIntoViewOnFocus
 
 @Composable
 fun DeviceInfoActionButtons(modifier: Modifier = Modifier) {
@@ -37,6 +38,7 @@ fun DeviceInfoActionButtons(modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .bringIntoViewOnFocus(includeChildren = true)
             .clip(
                 CornerExtraLarge1.copy(
                     topStart = CornerExtraSmall2.topStart,

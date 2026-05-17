@@ -32,6 +32,7 @@ import com.android.settingslib.spa.framework.theme.SettingsSpace
 import com.android.settingslib.spa.framework.theme.SettingsTheme
 import com.android.settingslib.spa.widget.scaffold.MoreOptionsAction
 import com.android.settingslib.spa.widget.scaffold.MoreOptionsScope
+import org.lineageos.updater.ui.bringIntoViewOnFocus
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -42,6 +43,7 @@ fun ActionBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .bringIntoViewOnFocus(includeChildren = true)
             .padding(SettingsDimension.buttonPadding),
         horizontalArrangement = Arrangement.spacedBy(SettingsSpace.extraSmall2),
         verticalAlignment = Alignment.CenterVertically,
