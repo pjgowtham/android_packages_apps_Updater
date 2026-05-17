@@ -111,6 +111,7 @@ class UpdateActionHandler(
                 )
                 val buildInfoText = activity.getString(
                     R.string.list_build_version_date,
+                    activity.getString(R.string.brand_name),
                     update.version,
                     buildDate,
                 )

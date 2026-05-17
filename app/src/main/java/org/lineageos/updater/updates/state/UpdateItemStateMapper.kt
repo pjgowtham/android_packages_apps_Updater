@@ -157,6 +157,7 @@ class UpdateItemStateMapper(
             ),
             buildVersion = context.getString(
                 R.string.list_build_version,
+                context.getString(R.string.brand_name),
                 update.version,
             ),
             status = state.titleRes?.let { context.getString(it) } ?: "",
