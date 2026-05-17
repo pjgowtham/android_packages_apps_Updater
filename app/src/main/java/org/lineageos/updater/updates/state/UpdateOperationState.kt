@@ -107,7 +107,7 @@ data class UpdateOperationState(
                 canExport = phase == UpdateOperationPhase.VERIFIED && !isLocal,
                 canDelete = canDelete,
 
-            )
+                )
         }
     }
 }

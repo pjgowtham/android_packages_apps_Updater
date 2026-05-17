@@ -73,6 +73,7 @@ enum class UpdateStatus(val persistentStatus: Int) {
         VERIFIED,
         INSTALLATION_FAILED,
         INSTALLATION_CANCELLED -> true
+
         else -> false
     }
 
@@ -80,6 +81,7 @@ enum class UpdateStatus(val persistentStatus: Int) {
         INSTALLING,
         INSTALLATION_SUSPENDED,
         UPDATED_NEED_REBOOT -> true
+
         else -> false
     }
 

@@ -6,13 +6,13 @@
 package org.lineageos.updater.util
 
 import android.content.Context
-import com.android.settingslib.utils.StringUtil as SettingsLibStringUtil
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
+import com.android.settingslib.utils.StringUtil as SettingsLibStringUtil
 
 object StringUtil {
 

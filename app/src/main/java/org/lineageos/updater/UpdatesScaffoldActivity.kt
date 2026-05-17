@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -275,7 +274,8 @@ private fun UpdatesActionPane(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val activity = context as UpdatesScaffoldActivity
-    val networkMonitor = remember { (context.applicationContext as UpdaterApplication).networkMonitor }
+    val networkMonitor =
+        remember { (context.applicationContext as UpdaterApplication).networkMonitor }
     val networkState by networkMonitor.networkState.collectAsState(
         initial = networkMonitor.currentNetworkState,
     )

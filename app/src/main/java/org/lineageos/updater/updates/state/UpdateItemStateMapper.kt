@@ -79,6 +79,7 @@ class UpdateItemStateMapper(
                     enabled = false,
                 ),
             )
+
             UpdateOperationPhase.VERIFIED -> ActionButtons(
                 primary = when {
                     state.canInstall -> action(

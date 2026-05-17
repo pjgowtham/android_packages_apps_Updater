@@ -37,12 +37,13 @@ import androidx.compose.ui.unit.dp
 import com.android.settingslib.spa.framework.theme.SettingsDimension
 import com.android.settingslib.spa.widget.ui.Lottie
 import com.android.settingslib.spa.widget.ui.SettingsBody
-import java.util.Date
 import kotlinx.coroutines.delay
 import org.lineageos.updater.R
 import org.lineageos.updater.ui.bringIntoViewOnFocus
+import java.util.Date
 
 private const val MIN_CHECKING_DURATION_MILLIS = 2_000L
+
 // Matches SettingsLib's expressive zero-state background size.
 private val AnimationSize = 160.dp
 

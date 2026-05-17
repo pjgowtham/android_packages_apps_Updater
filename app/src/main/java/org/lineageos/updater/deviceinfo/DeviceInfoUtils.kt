@@ -35,10 +35,12 @@ object DeviceInfoUtils : SettingsLibDeviceInfoUtils() {
     val buildVersion: String = "23.0" //SystemProperties.get(PROP_BUILD_VERSION, "")
 
     @JvmStatic
-    val buildVersionIncremental: String = "000000" //SystemProperties.get(PROP_BUILD_VERSION_INCREMENTAL, "")
+    val buildVersionIncremental: String =
+        "000000" //SystemProperties.get(PROP_BUILD_VERSION_INCREMENTAL, "")
 
     @JvmStatic
-    val device: String = "lemonadep" //SystemProperties.get(PROP_NEXT_DEVICE, SystemProperties.get(PROP_DEVICE))
+    val device: String =
+        "lemonadep" //SystemProperties.get(PROP_NEXT_DEVICE, SystemProperties.get(PROP_DEVICE))
 
     @JvmStatic
     val isABDevice: Boolean = SystemProperties.getBoolean(PROP_AB_DEVICE, false)

@@ -31,7 +31,9 @@ fun UpdateList(
     modifier: Modifier = Modifier,
 ) {
     if (items.isEmpty()) {
-        if (isCheckingForUpdates) { return }
+        if (isCheckingForUpdates) {
+            return
+        }
 
         ZeroStatePreference(
             icon = Icons.Outlined.Check,
