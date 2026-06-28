@@ -28,6 +28,17 @@ class UpdateItemStateMapper(
     fun map(update: Update, networkState: NetworkState): UpdateItemState {
         val state = UpdateOperationState.from(updaterController, update)
         val canStreamUpdate = InstallUtils.canStreamUpdate(update, streamUpdatesEnabled)
+        val blockedReason = InstallUtils.getBlockedReason(update)
+        val isMajorUpgradeBlocked = !state.canInstall &&
+                blockedReason == InstallUtils.BlockedReason.VERSION_UNSUPPORTED
+        val installNote = if (isMajorUpgradeBlocked) {
+            context.getString(
+                R.string.list_major_upgrade_recovery_install,
+                context.getString(R.string.brand_name),
+            )
+        } else {
+            context.getString(R.string.list_full_install)
+        }
 
         val progress = when {
             state.isDownloading -> {
@@ -85,6 +96,10 @@ class UpdateItemStateMapper(
 
             UpdateOperationPhase.VERIFIED -> ActionButtons(
                 primary = when {
+                    isMajorUpgradeBlocked -> action(
+                        type = UpdateActionType.OPEN_GUIDE,
+                    )
+
                     state.canInstall -> action(
                         type = UpdateActionType.START_INSTALL,
                         enabled = !state.isBusy,
@@ -123,6 +138,10 @@ class UpdateItemStateMapper(
 
             else -> ActionButtons(
                 primary = when {
+                    isMajorUpgradeBlocked -> action(
+                        type = UpdateActionType.OPEN_GUIDE,
+                    )
+
                     !state.canInstall -> action(
                         type = UpdateActionType.SHOW_INFO,
                         enabled = !state.isBusy,
@@ -180,6 +199,7 @@ class UpdateItemStateMapper(
             securityUpdate = update.osPatchLevel?.let {
                 StringUtil.formatSecurityPatch(context, it)
             } ?: "",
+            installNote = installNote,
             progress = progress,
             actions = actions,
         )
