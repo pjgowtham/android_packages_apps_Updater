@@ -35,6 +35,7 @@ data class UpdateOperationState(
     val phase: UpdateOperationPhase,
     val isBusy: Boolean,
     val isFullyDownloaded: Boolean,
+    val installBlockedReason: InstallUtils.BlockedReason,
     val canInstall: Boolean,
     val canExport: Boolean,
     val canDelete: Boolean,
@@ -61,6 +62,9 @@ data class UpdateOperationState(
 
     val isFinalizing: Boolean
         get() = phase == UpdateOperationPhase.FINALIZING
+
+    val requiresManualInstall: Boolean
+        get() = installBlockedReason == InstallUtils.BlockedReason.VERSION_UNSUPPORTED
 
     @get:StringRes
     val titleRes: Int?
@@ -98,16 +102,21 @@ data class UpdateOperationState(
                     phase == UpdateOperationPhase.VERIFICATION_FAILED
             val isLocal = downloadId == Update.LOCAL_ID
             val isFullyDownloaded = controller.isFullyDownloaded(update)
+            val installBlockedReason = if (isLocal) {
+                InstallUtils.BlockedReason.NONE
+            } else {
+                InstallUtils.getBlockedReason(update)
+            }
 
             return UpdateOperationState(
                 phase = phase,
                 isBusy = controller.isBusy,
                 isFullyDownloaded = isLocal || isFullyDownloaded,
-                canInstall = InstallUtils.canInstall(update) || isLocal,
+                installBlockedReason = installBlockedReason,
+                canInstall = installBlockedReason == InstallUtils.BlockedReason.NONE,
                 canExport = phase == UpdateOperationPhase.VERIFIED && !isLocal,
                 canDelete = canDelete,
-
-                )
+            )
         }
     }
 }
