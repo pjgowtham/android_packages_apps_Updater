@@ -64,6 +64,8 @@ android_app {
         "androidx.datastore_datastore-core",
         "androidx.datastore_datastore-preferences",
         "androidx.graphics_graphics-shapes",
+        "androidx.leanback_leanback",
+        "androidx.leanback_leanback-preference",
         "androidx.lifecycle_lifecycle-livedata-ktx",
         "androidx.lifecycle_lifecycle-runtime",
         "androidx.lifecycle_lifecycle-runtime-compose",
@@ -81,6 +83,7 @@ android_app {
         "kotlin-stdlib",
         "kotlinx_serialization_json",
     ] + [
+        "TwoPanelSettingsLib",
         "ota_metadata_proto_java",
     ],
 
