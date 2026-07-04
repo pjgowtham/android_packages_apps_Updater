@@ -7,7 +7,6 @@ package org.lineageos.updater.util
 
 import org.lineageos.updater.data.Update
 import org.lineageos.updater.deviceinfo.DeviceInfoUtils
-import org.lineageos.updater.misc.Utils
 import java.io.File
 
 object InstallUtils {
@@ -23,16 +22,21 @@ object InstallUtils {
     }
 
     @JvmStatic
-    fun getBlockedReason(update: Update) = when {
-        !DeviceInfoUtils.isDowngradingAllowed
-                && update.timestamp <= DeviceInfoUtils.buildDateTimestamp
-            -> BlockedReason.DOWNGRADE
+    fun getBlockedReason(update: Update): BlockedReason {
+        val osSdkLevel = update.osSdkLevel ?: return BlockedReason.VERSION_UNSUPPORTED
 
-        !Utils.compareVersions(
-            update.version, DeviceInfoUtils.buildVersion, DeviceInfoUtils.isMajorUpdateAllowed
-        ) -> BlockedReason.VERSION_UNSUPPORTED
+        if (!DeviceInfoUtils.isDowngradingAllowed &&
+                (update.timestamp < DeviceInfoUtils.buildDateTimestamp ||
+                        osSdkLevel < DeviceInfoUtils.sdkLevel)) {
+            return BlockedReason.DOWNGRADE
+        }
 
-        else -> BlockedReason.NONE
+        if (!DeviceInfoUtils.isMajorUpdateAllowed &&
+            osSdkLevel > DeviceInfoUtils.sdkLevel) {
+            return BlockedReason.VERSION_UNSUPPORTED
+        }
+
+        return BlockedReason.NONE
     }
 
     @JvmStatic
