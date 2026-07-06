@@ -102,11 +102,7 @@ data class UpdateOperationState(
                     phase == UpdateOperationPhase.VERIFICATION_FAILED
             val isLocal = downloadId == Update.LOCAL_ID
             val isFullyDownloaded = controller.isFullyDownloaded(update)
-            val installBlockedReason = if (isLocal) {
-                InstallUtils.BlockedReason.NONE
-            } else {
-                InstallUtils.getBlockedReason(update)
-            }
+            val installBlockedReason = InstallUtils.getBlockedReason(update)
 
             return UpdateOperationState(
                 phase = phase,
